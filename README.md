@@ -1,1 +1,1 @@
-Go Problem Solving Platform similar to Codingbat
+Go Problem-Solving Platform similar to Codingbat
