@@ -1,0 +1,7 @@
+[
+  {
+    "title": "Hello World",
+    "task": "Print \"Hello World!\" to the console",
+    "code": "func PrintMessage() {\n\n}"
+  }
+]
