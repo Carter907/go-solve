@@ -1,4 +1,5 @@
 <html>
+<script src="https://unpkg.com/htmx.org@2.0.0"></script>
 <section class="flex flex-row justify-center items-center h-full gap-2">
     <section class="flex flex-col h-full basis-2/3 gap-4">
         <section class="basis-1/6 bg-neutral-900 opacity-70 p-2 rounded flex flex-row">
@@ -20,12 +21,9 @@
             editor.session.setMode("ace/mode/golang");
             editor.setOption("fontSize", "16px");
 
-            require("ace/config").loadModule("ace/keyboard/vim", function (vim) {
-                vim.enable(editor);
-            });
         </script>
         <section class="flex flex-col">
-            <button class="self-end dark:text-white shadow-md hover:bg-neutral-800 border rounded p-2 border:neutral-400">
+            <button hx-get="/hello-world/console" hx-swap="outerHTML" hx-target="#console" hx-vals='js:{editorContent: editor.getValue()}' class="self-end dark:text-white shadow-md hover:bg-neutral-800 border rounded p-2 border:neutral-400">
                 run code
             </button>
         </section>

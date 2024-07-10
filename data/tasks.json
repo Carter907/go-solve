@@ -1,7 +1,8 @@
 [
   {
     "title": "Hello World",
-    "task": "Print \"Hello World!\" to the console",
-    "code": "func PrintMessage() {\n\n}"
+    "task": "Return \"Hello World!\" to from this function",
+    "code": "func ReturnMessage() {\n\n}",
+    "test-path": "./tasks/hello_world"
   }
 ]
