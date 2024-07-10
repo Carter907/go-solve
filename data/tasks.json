@@ -1,8 +1,8 @@
 [
   {
     "title": "Hello World",
-    "task": "Return \"Hello World!\" to from this function",
-    "code": "func ReturnMessage() {\n\n}",
-    "test-path": "./tasks/hello_world"
+    "task": "Return \"Hello World\" to from this function",
+    "code": "package hello_world\n\nfunc ReturnMessage() string {\n\n}",
+    "test-path": "./tasks/beginner/hello_world"
   }
 ]

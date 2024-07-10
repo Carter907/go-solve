@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 )
 
 func main() {
@@ -18,40 +19,52 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	file, err := os.Open("./data/tasks.json")
-	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-		return
-	}
+	tasks := LoadTasks()
 
-	var tasks []task.Task
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&tasks)
-	if err != nil {
-		log.Fatalf("failed to deserialize json: %v", err)
-	}
-	file.Close()
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/editor", func(w http.ResponseWriter, r *http.Request) {
-		Editor(w, r, &tasks[0])
 
-	})
-	http.HandleFunc("/hello-world/console", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {
 		editorContent := r.FormValue("editorContent")
-		tasks[0].Code = editorContent
-		fmt.Println(tasks[0].Code)
-		out, errOut := editor.RunCode(&tasks[0])
+		taskIndex, err := strconv.Atoi(r.FormValue("taskIndex"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		tasks[taskIndex].Code = editorContent
+		fmt.Println(tasks[taskIndex].Code)
+		out, errOut := editor.RunCode(&tasks[taskIndex])
 		Console(w, r, &console.Console{
 			Out: out.String(),
 			Err: errOut.String(),
 		})
 	})
-	http.HandleFunc("/hello-world", func(w http.ResponseWriter, r *http.Request) {
-		Editor(w, r, &tasks[0])
+
+	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
+		index, err := strconv.Atoi(r.FormValue("taskIndex"))
+		fmt.Println(index)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		Editor(w, r, &tasks[index])
 	})
 	http.ListenAndServe(":"+port, nil)
 }
 
+func LoadTasks() (tasks []task.Task) {
+	file, err := os.Open("./data/tasks.json")
+	defer file.Close()
+	if err != nil {
+		log.Fatalf("Error opening file: %v", err)
+	}
+
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&tasks)
+	if err != nil {
+		log.Fatalf("failed to deserialize json: %v", err)
+	}
+	return
+}
 func Console(w http.ResponseWriter, r *http.Request, c *console.Console) {
 	fp := path.Join("templates", "console.html")
 	tmpl, err := template.ParseFiles(fp)
