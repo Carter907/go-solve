@@ -16,8 +16,14 @@ func TestSolution(code string, path string) (out, errOut bytes.Buffer) {
 	if err != nil {
 		log.Fatalln("invalid path: ", err)
 	}
-	file.WriteString(code)
-	file.Close()
+	_, err = file.WriteString(code)
+	if err != nil {
+		return bytes.Buffer{}, bytes.Buffer{}
+	}
+	err = file.Close()
+	if err != nil {
+		return bytes.Buffer{}, bytes.Buffer{}
+	}
 	cmd := exec.Command("go", "build", path+"/solution.go")
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
