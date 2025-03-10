@@ -15,6 +15,8 @@ import (
 )
 
 func main() {
+
+	fmt.Println("starting go-solve on http://localhost:8080")
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -24,15 +26,22 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
 	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {
+
 		editorContent := r.FormValue("editorContent")
-		taskIndex, err := strconv.Atoi(r.FormValue("taskIndex"))
+		taskIndexStr := r.FormValue("taskIndex")
+
+		fmt.Println(editorContent, taskIndexStr)
+
+		var taskIndex, err = strconv.Atoi(taskIndexStr)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		tasks[taskIndex].Code = editorContent
-		fmt.Println(tasks[taskIndex].Code)
-		out, errOut := editor.RunCode(&tasks[taskIndex])
+		out, errOut := editor.RunCode(&tasks[taskIndex]) // goes to TestSolution
+
+		// call the Console handler after retrieving the correct task
+
 		Console(w, r, &console.Console{
 			Out: out.String(),
 			Err: errOut.String(),
@@ -48,7 +57,10 @@ func main() {
 		}
 		Editor(w, r, &tasks[index])
 	})
-	http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		return
+	}
 }
 
 func LoadTasks() (tasks []task.Task) {
@@ -66,15 +78,11 @@ func LoadTasks() (tasks []task.Task) {
 	return
 }
 func Console(w http.ResponseWriter, r *http.Request, c *console.Console) {
-	fp := path.Join("templates", "console.html")
-	tmpl, err := template.ParseFiles(fp)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
-	if err := tmpl.Execute(w, c); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	_, err := fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", c.Out, c.Err)
+	if err != nil {
+		fmt.Println("Ran into unexpected error:", err)
+		return
 	}
 }
 
@@ -86,7 +94,9 @@ func Editor(w http.ResponseWriter, r *http.Request, t *task.Task) {
 		return
 	}
 
-	if err := tmpl.Execute(w, t); err != nil {
+	fmt.Printf("executing editor with task: \n%v\n", *t)
+	err = tmpl.Execute(w, t)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
