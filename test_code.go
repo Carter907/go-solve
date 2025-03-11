@@ -19,6 +19,7 @@ func RunCode(task *model.Task) model.TaskResult {
 }
 
 func TestSolution(code string, path string) (out, errOut bytes.Buffer) {
+
 	fmt.Println("testing solution...")
 	fmt.Println("code --\n", code)
 	fmt.Println("path --", path)
