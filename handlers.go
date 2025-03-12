@@ -76,7 +76,18 @@ func TaskHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, cur
 
 	*currTaskIndex = index
 
-	EditorTmpl(w, &tasks[index])
+	tmpl, err := template.ParseFiles("templates/editor.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	task := &tasks[index]
+
+	fmt.Printf("Sending editor template with task: \n%v\n", *task)
+	err = tmpl.ExecuteTemplate(w, "editor", task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, taskIndex int) {
@@ -86,31 +97,9 @@ func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, 
 	tasks[taskIndex].Code = editorContent
 	taskResult := RunCode(&tasks[taskIndex]) // goes to TestSolution
 
-	// call the Console handler after retrieving the correct task
-
-	ConsoleOutput(w, &taskResult)
-}
-
-func ConsoleOutput(w http.ResponseWriter, c *model.TaskResult) {
-
-	_, err := fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", c.Out, c.Err)
+	_, err := fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
 	if err != nil {
 		http.Error(w, "Ran into unexpected error:", http.StatusInternalServerError)
 		return
-	}
-}
-
-func EditorTmpl(w http.ResponseWriter, t *model.Task) {
-
-	tmpl, err := template.ParseFiles("templates/editor.html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Printf("Sending editor template with task: \n%v\n", *t)
-	err = tmpl.ExecuteTemplate(w, "editor", t)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
