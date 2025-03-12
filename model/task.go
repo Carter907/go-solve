@@ -6,10 +6,11 @@ import (
 )
 
 type Task struct {
-	Title string `json:"title"`
-	Task  string `json:"task"`
-	Code  string `json:"code"`
-	Path  string `json:"test-path"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Task        string `json:"task"`
+	Code        string `json:"code"`
+	Path        string `json:"test-path"`
 }
 
 func (t Task) String() string {

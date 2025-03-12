@@ -1,0 +1,26 @@
+{{ define "home" }}
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                darkMode: 'selector'
+            }
+        </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.2/ace.js"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+
+    </head>
+    <body class="dark bg-neutral-800 h-screen flex flex-col">
+
+        {{ template "header" }}
+        {{ template "task-list" . }}
+
+    </body>
+    </html>
+{{ end }}

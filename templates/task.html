@@ -1,0 +1,16 @@
+{{ define "task" }}
+
+    <a class="cursor-pointer" hx-get="/task"
+       hx-vals='{ "taskIndex": "0" }'
+       hx-swap="outerHTML" hx-target="#task-list">
+
+        {{ with .Task }}
+            <div class="bg-neutral-900 rounded-full p-10 w-min-max">
+                {{ .Title }}
+                <p class="font-light opacity-50">
+                    {{ .Description }}
+                </p>
+            </div>
+        {{ end }}
+    </a>
+{{end}}

@@ -1,0 +1,19 @@
+{{ define "task-list" }}
+    <main class="flex-grow w-2/3 m-auto py-20 dark:text-neutral-300">
+        <section id="task-list" class="flex flex-col gap-10">
+            <div>
+                <p class="text-4xl text-center">
+                    Go Solve These!
+                </p>
+            </div>
+
+            <ul class="font-bold">
+                {{ range $index, $value := . }}
+                    <li class="mt-5">
+                        {{ template "task" dict "Index" $index "Task" $value }}
+                    </li>
+                {{ end }}
+            </ul>
+        </section>
+    </main>
+{{ end }}

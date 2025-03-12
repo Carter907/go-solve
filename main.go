@@ -21,13 +21,18 @@ func main() {
 	tasks := GetTasksArray("./data/tasks.json")
 	currTaskIndex := 0
 
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		HomeHandler(w, r, tasks)
+	})
 
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
+
 		TaskHandler(w, r, tasks, &currTaskIndex)
 	})
 
 	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {
+
 		RunCodeHandler(w, r, tasks, currTaskIndex)
 	})
 

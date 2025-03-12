@@ -5,9 +5,38 @@ import (
 	"github.com/Carter907/go-solve/model"
 	"html/template"
 	"net/http"
-	"path"
 	"strconv"
 )
+
+func HomeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task) {
+
+	funcMap := template.FuncMap{
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+	}
+	tmpl, err := template.New("home").Funcs(funcMap).ParseGlob("templates/*.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, tasks)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
 
 func TaskHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, currTaskIndex *int) {
 
@@ -45,15 +74,14 @@ func ConsoleOutput(w http.ResponseWriter, c *model.TaskResult) {
 
 func EditorTmpl(w http.ResponseWriter, t *model.Task) {
 
-	fp := path.Join("templates", "editor.html")
-	tmpl, err := template.ParseFiles(fp)
+	tmpl, err := template.ParseFiles("templates/editor.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Printf("Sending editor template with task: \n%v\n", *t)
-	err = tmpl.Execute(w, t)
+	err = tmpl.ExecuteTemplate(w, "editor", t)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
