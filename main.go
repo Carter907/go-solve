@@ -23,7 +23,7 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-		HomeHandler(w, r, tasks)
+		BaseHandler(w, r, tasks)
 	})
 
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +34,15 @@ func main() {
 	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {
 
 		RunCodeHandler(w, r, tasks, currTaskIndex)
+	})
+
+	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+
+		_, err := fmt.Fprintln(w, "Welcome to login")
+		if err != nil {
+			log.Fatalln("Failed to reach the login page", http.StatusInternalServerError)
+			return
+		}
 	})
 
 	err := http.ListenAndServe(":"+port, nil)

@@ -1,4 +1,4 @@
-{{ define "home" }}
+{{ define "base" }}
 
     <!DOCTYPE html>
     <html lang="en">
@@ -16,10 +16,15 @@
         <script src="https://unpkg.com/htmx.org@2.0.0"></script>
 
     </head>
-    <body class="dark bg-neutral-800 h-screen flex flex-col">
+    <body class="dark bg-neutral-800 h-screen flex flex-col text-neutral-200">
 
-        {{ template "header" }}
-        {{ template "task-list" . }}
+    {{ template "header" }}
+
+    {{ if eq .Path "sign-up"}}
+        {{ template "sign-up" }}
+    {{ else if eq .Path "" }}
+        {{ template "task-list" .Tasks }}
+    {{ end }}
 
     </body>
     </html>

@@ -8,34 +8,62 @@ import (
 	"strconv"
 )
 
-func HomeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task) {
+func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task) {
+	path := r.URL.Path[1:]
 
-	funcMap := template.FuncMap{
-		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("invalid dict call")
-			}
-			dict := make(map[string]interface{}, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					return nil, fmt.Errorf("dict keys must be strings")
+	type BaseArgs struct {
+		Path  string
+		Tasks []model.Task
+	}
+	switch path {
+	case "signup":
+		tmpl, err := template.New("base").ParseGlob("templates/base.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.Execute(w, BaseArgs{
+			Path:  path,
+			Tasks: nil,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		break
+	default:
+		funcMap := template.FuncMap{
+			"dict": func(values ...interface{}) (map[string]interface{}, error) {
+				if len(values)%2 != 0 {
+					return nil, fmt.Errorf("invalid dict call")
 				}
-				dict[key] = values[i+1]
-			}
-			return dict, nil
-		},
-	}
-	tmpl, err := template.New("home").Funcs(funcMap).ParseGlob("templates/*.html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+				dict := make(map[string]interface{}, len(values)/2)
+				for i := 0; i < len(values); i += 2 {
+					key, ok := values[i].(string)
+					if !ok {
+						return nil, fmt.Errorf("dict keys must be strings")
+					}
+					dict[key] = values[i+1]
+				}
+				return dict, nil
+			},
+		}
+		tmpl, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.Execute(w, BaseArgs{
+			Path:  path,
+			Tasks: tasks,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		break
 	}
 
-	err = tmpl.Execute(w, tasks)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
 }
 
 func TaskHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, currTaskIndex *int) {
