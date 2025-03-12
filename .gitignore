@@ -1,1 +1,6 @@
-../.idea/
+.idea/
+frontend/
+
+tasks/beginner/**/solution.go
+
+go.sum

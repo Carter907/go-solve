@@ -5,6 +5,16 @@
             <p class="opacity-50 text-base">Solve Golang problems of all difficulties!</p>
         </div>
         <div class="flex-grow">
+
+            {{ if .User }}
+                {{ with .User }}
+                    {{ if ge (len .Username) 1 }}
+                        <p>Logged in as {{ .Username }}</p>
+                    {{ end }}
+                {{ end }}
+            {{ end }}
+        </div>
+        <div class="flex-grow">
             <!-- Dropdown Button -->
             <div class="relative">
                 <button id="dropdownButton"
@@ -20,49 +30,7 @@
                 <div id="dropdownContent"
                      class="absolute right-0 top-16 mt-2 w-128 bg-neutral-800 rounded-md shadow-xl
                  hidden">
-                    <form class="p-4" action="/login" method="GET">
-                        <div class="mb-4">
-                            <label for="username"
-                                   class="block text-sm font-medium text-neutral-300">Username</label>
-                            <input type="text" id="username"
-                                   class="mt-1 block w-full px-4 border text-neutral-900
-                               border-neutral-300
-                               rounded-md shadow-sm focus:outline-none focus:ring-neutral-500
-                               focus:border-neutral-500"
-                                   placeholder="Enter your username">
-                        </div>
-                        <div class="mb-4">
-                            <label for="password" class="block text-sm font-medium
-                        text-gray-300">Password</label>
-                            <input type="password" id="password"
-                                   class="mt-1 block w-full px-4 border
-                               text-neutral-900 border-neutral-300
-                               rounded-md shadow-sm focus:outline-none focus:ring-neutral-500
-                               focus:border-neutral-500"
-                                   placeholder="Enter your password">
-                        </div>
-                        <div class="flex flex-row gap-5">
-                            <a href="/sign-up"
-                                    class="w-full text-center bg-neutral-700
-                            text-neutral-300 px-4
-                            py-1 rounded-md
-                            hover:bg-neutral-600 focus:outline-none focus:ring-2
-                            focus:ring-neutral-500
-                            focus:ring-opacity-50">
-                                Sign up
-                            </a>
-                            <button type="submit"
-                                    class="w-full bg-neutral-700
-                            text-neutral-300 px-4
-                            py-1 rounded-md
-                            hover:bg-neutral-600 focus:outline-none focus:ring-2
-                            focus:ring-neutral-500
-                            focus:ring-opacity-50">
-                                Log in
-                            </button>
-                        </div>
-
-                    </form>
+                    {{ template "login-form" }}
                 </div>
                 <script>
                     // JavaScript to toggle the dropdown

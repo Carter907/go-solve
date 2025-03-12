@@ -8,12 +8,13 @@ import (
 	"strconv"
 )
 
-func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task) {
+func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, user User) {
 	path := r.URL.Path[1:]
 
 	type BaseArgs struct {
 		Path  string
 		Tasks []model.Task
+		User  User
 	}
 	switch path {
 	case "signup":
@@ -26,6 +27,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task) {
 		err = tmpl.Execute(w, BaseArgs{
 			Path:  path,
 			Tasks: nil,
+			User:  user,
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -57,6 +59,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task) {
 		err = tmpl.Execute(w, BaseArgs{
 			Path:  path,
 			Tasks: tasks,
+			User:  user,
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -92,14 +95,42 @@ func TaskHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, cur
 
 func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, taskIndex int) {
 
+	err := r.ParseForm()
+	if err != nil {
+
+		http.Error(w, "Failed to parse form", http.StatusInternalServerError)
+		return
+	}
+
 	editorContent := r.FormValue("editorContent")
 
 	tasks[taskIndex].Code = editorContent
 	taskResult := RunCode(&tasks[taskIndex]) // goes to TestSolution
 
-	_, err := fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
+	_, err = fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
 	if err != nil {
 		http.Error(w, "Ran into unexpected error:", http.StatusInternalServerError)
 		return
 	}
+}
+
+func LoginHandler(w http.ResponseWriter, r *http.Request, user *User) {
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form", http.StatusInternalServerError)
+		return
+	}
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	if GetUser(GetConnection(), username, password) != nil {
+
+		user.Username = username
+		user.Password = password
+		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+	} else {
+		http.Error(w, "Failed to login, you are not authenticated.", http.StatusUnauthorized)
+	}
+
 }

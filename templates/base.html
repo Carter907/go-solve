@@ -18,7 +18,7 @@
     </head>
     <body class="dark bg-neutral-800 h-screen flex flex-col text-neutral-200">
 
-    {{ template "header" }}
+    {{ template "header" . }}
 
     {{ if eq .Path "sign-up"}}
         {{ template "sign-up" }}

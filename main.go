@@ -19,11 +19,12 @@ func main() {
 	}
 
 	tasks := GetTasksArray("./data/tasks.json")
+	user := User{}
 	currTaskIndex := 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-		BaseHandler(w, r, tasks)
+		BaseHandler(w, r, tasks, user)
 	})
 
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
@@ -38,11 +39,7 @@ func main() {
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 
-		_, err := fmt.Fprintln(w, "Welcome to login")
-		if err != nil {
-			log.Fatalln("Failed to reach the login page", http.StatusInternalServerError)
-			return
-		}
+		LoginHandler(w, r, &user)
 	})
 
 	err := http.ListenAndServe(":"+port, nil)
