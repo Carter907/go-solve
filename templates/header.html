@@ -16,39 +16,17 @@
         </div>
         <div class="flex-grow">
             <!-- Dropdown Button -->
-            <div class="relative">
-                <button id="dropdownButton"
-                        class="absolute right-0 mt-2 bg-neutral-900 border border-neutral-400
-                    text-gray-300 px-4
-                    py-1 rounded-md
-                    focus:outline-none">
-                    Login
-                </button>
 
+            {{ if .User }}
+                {{ with .User }}
+                    {{ if ge (len .Username) 1 }}
+                        {{ template "logout-button" . }}
+                    {{ else }}
 
-                <!-- Dropdown Content -->
-                <div id="dropdownContent"
-                     class="absolute right-0 top-16 mt-2 w-128 bg-neutral-800 rounded-md shadow-xl
-                 hidden">
-                    {{ template "login-form" }}
-                </div>
-                <script>
-                    // JavaScript to toggle the dropdown
-                    const dropdownButton = document.getElementById('dropdownButton');
-                    const dropdownContent = document.getElementById('dropdownContent');
-
-                    dropdownButton.addEventListener('click', () => {
-                        dropdownContent.classList.toggle('hidden');
-                    });
-
-                    // Close the dropdown if clicked outside
-                    document.addEventListener('click', (event) => {
-                        if (!dropdownButton.contains(event.target) && !dropdownContent.contains(event.target)) {
-                            dropdownContent.classList.add('hidden');
-                        }
-                    });
-                </script>
-            </div>
+                        {{ template "login-button" . }}
+                    {{ end }}
+                {{ end }}
+            {{ end }}
         </div>
     </header>
 {{ end }}

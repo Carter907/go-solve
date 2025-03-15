@@ -1,6 +1,6 @@
 .idea/
 frontend/
 
-tasks/beginner/**/solution.go
+tasks/easy/**/solution.go
 
 go.sum

@@ -8,63 +8,59 @@ import (
 	"strconv"
 )
 
-func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, user User) {
+func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, user *model.User) {
 	path := r.URL.Path[1:]
-
+	funcMap := template.FuncMap{
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+	}
 	type BaseArgs struct {
 		Path  string
 		Tasks []model.Task
-		User  User
+		User  *model.User
 	}
+	var tmpl *template.Template
+
 	switch path {
-	case "signup":
-		tmpl, err := template.New("base").ParseGlob("templates/base.html")
+	case "signup-form":
+		var t, err = template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		err = tmpl.Execute(w, BaseArgs{
-			Path:  path,
-			Tasks: nil,
-			User:  user,
-		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		tmpl = t
 		break
 	default:
-		funcMap := template.FuncMap{
-			"dict": func(values ...interface{}) (map[string]interface{}, error) {
-				if len(values)%2 != 0 {
-					return nil, fmt.Errorf("invalid dict call")
-				}
-				dict := make(map[string]interface{}, len(values)/2)
-				for i := 0; i < len(values); i += 2 {
-					key, ok := values[i].(string)
-					if !ok {
-						return nil, fmt.Errorf("dict keys must be strings")
-					}
-					dict[key] = values[i+1]
-				}
-				return dict, nil
-			},
-		}
-		tmpl, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
+		t, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		err = tmpl.Execute(w, BaseArgs{
-			Path:  path,
-			Tasks: tasks,
-			User:  user,
-		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		tmpl = t
 		break
+	}
+
+	err := tmpl.Execute(w, BaseArgs{
+		Path:  path,
+		Tasks: tasks,
+		User:  user,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 }
@@ -114,7 +110,29 @@ func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, 
 	}
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request, user *User) {
+func SignupHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form", http.StatusInternalServerError)
+		return
+	}
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirm-password")
+	if password != confirmPassword {
+		http.Error(w, "Failed to signup, passwords don't match.", http.StatusBadRequest)
+		return
+	}
+	if SignUpUser(GetConnection(), username, password) {
+
+		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+	} else {
+
+		http.Error(w, "Failed to Sign up.", http.StatusInternalServerError)
+	}
+}
+
+func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
 
 	err := r.ParseForm()
 	if err != nil {
@@ -123,14 +141,26 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, user *User) {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
+	fmt.Println("logging in as", username, password)
 
-	if GetUser(GetConnection(), username, password) != nil {
+	if userDB := GetUser(GetConnection(), username, password); userDB != nil {
 
-		user.Username = username
-		user.Password = password
+		user.Username = userDB.Username
+		user.Password = userDB.Password
+
 		http.Redirect(w, r, "/", http.StatusMovedPermanently)
 	} else {
 		http.Error(w, "Failed to login, you are not authenticated.", http.StatusUnauthorized)
 	}
 
+}
+
+func LogoutHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
+
+	fmt.Println("logging out")
+
+	user.Username = ""
+	user.Password = ""
+
+	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }

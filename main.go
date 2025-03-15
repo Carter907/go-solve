@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/Carter907/go-solve/model"
 	"log"
@@ -18,8 +17,13 @@ func main() {
 		port = "8080"
 	}
 
-	tasks := GetTasksArray("./data/tasks.json")
-	user := User{}
+	tasks := GetTasks(GetConnection())
+
+	user := &model.User{
+		ID:       0,
+		Username: "",
+		Password: "",
+	}
 	currTaskIndex := 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -37,9 +41,19 @@ func main() {
 		RunCodeHandler(w, r, tasks, currTaskIndex)
 	})
 
+	http.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) {
+
+		SignupHandler(w, r)
+	})
+
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 
-		LoginHandler(w, r, &user)
+		LoginHandler(w, r, user)
+	})
+
+	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+
+		LogoutHandler(w, r, user)
 	})
 
 	err := http.ListenAndServe(":"+port, nil)
@@ -48,24 +62,4 @@ func main() {
 		log.Fatalln("Failed to run the server:", err)
 		return
 	}
-}
-
-func GetTasksArray(tasksPath string) (tasks []model.Task) {
-	file, err := os.Open(tasksPath)
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Fatalln("Failed to close path:", tasksPath)
-		}
-	}(file)
-	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&tasks)
-	if err != nil {
-		log.Fatalln("Failed to deserialize json:", err)
-	}
-	return
 }

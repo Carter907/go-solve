@@ -20,8 +20,8 @@
 
     {{ template "header" . }}
 
-    {{ if eq .Path "sign-up"}}
-        {{ template "sign-up" }}
+    {{ if eq .Path "signup-form"}}
+        {{ template "signup-form" }}
     {{ else if eq .Path "" }}
         {{ template "task-list" .Tasks }}
     {{ end }}

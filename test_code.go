@@ -7,10 +7,17 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func RunCode(task *model.Task) model.TaskResult {
-	out, errOut := TestSolution(task.Code, task.Path)
+	path := fmt.Sprintf("./tasks/%s/%s",
+		strings.ToLower(task.Difficulty),
+		strings.ReplaceAll(
+			strings.ToLower(task.Title), " ", "_"),
+	)
+	fmt.Println(path)
+	out, errOut := TestSolution(task.Code, path)
 
 	return model.TaskResult{
 		Out: out.String(),
