@@ -124,6 +124,7 @@ Project Link: [https://github.com/Carter907/go-solve](https://github.com/Carter9
 ## Acknowledgments
 
 * [Golang HTML template docs](https://pkg.go.dev/html/template)
+* [Go Web Examples](https://gowebexamples.com/)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
