@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Carter907/go-solve/model"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -143,16 +144,47 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
 	password := r.FormValue("password")
 	fmt.Println("logging in as", username, password)
 
-	if userDB := GetUser(GetConnection(), username, password); userDB != nil {
+	type LoginArgs struct {
+		UsernameNotFound  bool
+		PasswordIncorrect bool
+	}
+	args := LoginArgs{
+		UsernameNotFound:  false,
+		PasswordIncorrect: false,
+	}
+	userDB, err1 := LoginUser(username, password)
+	if err1 != nil {
+
+		switch err1.Status {
+		case PasswordIncorrect:
+			args.PasswordIncorrect = true
+			break
+		case UsernameNotFound:
+			args.UsernameNotFound = true
+			break
+		}
+	} else {
+
+		w.Header().Set("HX-Refresh", "true")
+	}
+
+	if userDB != nil {
 
 		user.Username = userDB.Username
 		user.Password = userDB.Password
 
-		http.Redirect(w, r, "/", http.StatusMovedPermanently)
-	} else {
-		http.Error(w, "Failed to login, you are not authenticated.", http.StatusUnauthorized)
+	}
+	tmpl, err := template.ParseFiles("templates/login-form.html")
+	if err != nil {
+		log.Fatalln(err)
+		return
 	}
 
+	err = tmpl.ExecuteTemplate(w, "login-form", args)
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
