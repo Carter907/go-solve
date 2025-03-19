@@ -4,29 +4,34 @@
             <a href="/">Go-solve</a>
             <p class="opacity-50 text-base">Solve Golang problems of all difficulties!</p>
         </div>
-        <div class="flex-grow">
-
-            {{ if .User }}
-                {{ with .User }}
-                    {{ if ge (len .Username) 1 }}
-                        <p>Logged in as {{ .Username }}</p>
+        <div class="flex-grow flex flex-row gap-10">
+            <div class="basis-4/5 text-end self-center opacity-50">
+                <p><span class="underline">Logged in as:</span>
+                {{ if .User }}
+                    {{ with .User }}
+                        {{ if ge (len .Username) 1 }}
+                             {{ .Username }}</p>
+                        {{ end }}
                     {{ end }}
                 {{ end }}
-            {{ end }}
-        </div>
-        <div class="flex-grow">
-            <!-- Dropdown Button -->
 
-            {{ if .User }}
-                {{ with .User }}
-                    {{ if ge (len .Username) 1 }}
-                        {{ template "logout-button" . }}
-                    {{ else }}
+            </div>
+            <div class="flex-grow flex flex-col self-center">
+                <!-- Dropdown Button -->
+                <div>
+                    {{ if .User }}
+                        {{ with .User }}
+                            {{ if ge (len .Username) 1 }}
+                                {{ template "logout-button" . }}
+                            {{ else }}
 
-                        {{ template "login-button" . }}
+                                {{ template "login-button" . }}
+                            {{ end }}
+                        {{ end }}
                     {{ end }}
-                {{ end }}
-            {{ end }}
+
+                </div>
+            </div>
         </div>
     </header>
 {{ end }}

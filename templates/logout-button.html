@@ -1,15 +1,11 @@
 {{ define "logout-button" }}
-    <div class="relative">
         <form action="/logout" method="POST">
             <button type="submit" id="log-out-btn"
-                    class="absolute right-0 mt-2 bg-neutral-900 border border-neutral-400
+                    class="bg-neutral-900 border border-neutral-400
                     text-gray-300 px-4
                     py-1 rounded-md
                     focus:outline-none">
                 Logout
             </button>
         </form>
-
-
-    </div>
 {{ end }}
