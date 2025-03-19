@@ -140,7 +140,6 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !(args.UsernameTaken || args.PasswordsDontMatch) {
 		args.SignUpSuccess = true
-		w.Header().Set("HX-Refresh", "true")
 	}
 
 	tmpl, err := template.ParseFiles("templates/signup-form.html")
