@@ -31,9 +31,9 @@ func main() {
 		BaseHandler(w, r, tasks, user)
 	})
 
-	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/editor", func(w http.ResponseWriter, r *http.Request) {
 
-		TaskHandler(w, r, tasks, &currTaskIndex)
+		EditorHandler(w, r, tasks, &currTaskIndex)
 	})
 
 	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {

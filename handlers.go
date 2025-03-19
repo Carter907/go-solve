@@ -66,7 +66,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, use
 
 }
 
-func TaskHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, currTaskIndex *int) {
+func EditorHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, currTaskIndex *int) {
 
 	index, err := strconv.Atoi(r.FormValue("taskIndex"))
 	if err != nil {
