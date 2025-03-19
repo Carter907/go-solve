@@ -1,8 +1,9 @@
-package main
+package handlers
 
 import (
 	"fmt"
 	"github.com/Carter907/go-solve/model"
+	"github.com/Carter907/go-solve/service"
 	"html/template"
 	"log"
 	"net/http"
@@ -83,7 +84,7 @@ func EditorHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, c
 	}
 	task := &tasks[index]
 
-	fmt.Printf("Sending editor template with task: \n%v\n", *task)
+	fmt.Printf("Sending editor template with task: \n%s\n", task.Code)
 	err = tmpl.ExecuteTemplate(w, "editor", task)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -102,7 +103,7 @@ func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, 
 	editorContent := r.FormValue("editorContent")
 
 	tasks[taskIndex].Code = editorContent
-	taskResult := RunCode(&tasks[taskIndex]) // goes to TestSolution
+	taskResult := service.RunCode(&tasks[taskIndex]) // goes to TestSolution
 
 	_, err = fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
 	if err != nil {
@@ -120,17 +121,40 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirm-password")
-	if password != confirmPassword {
-		http.Error(w, "Failed to signup, passwords don't match.", http.StatusBadRequest)
+	fmt.Println("signing up as ", username, confirmPassword)
+	type SignUpArgs struct {
+		UsernameTaken      bool
+		PasswordsDontMatch bool
+		SignUpSuccess      bool
+	}
+
+	args := SignUpArgs{
+		UsernameTaken:      false,
+		PasswordsDontMatch: password != confirmPassword,
+		SignUpSuccess:      false,
+	}
+
+	_, serr := service.SignUpUser(username, password)
+	if serr != nil && serr.Status == service.UsernameTaken {
+		args.UsernameTaken = true
+	}
+	if !(args.UsernameTaken || args.PasswordsDontMatch) {
+		args.SignUpSuccess = true
+		w.Header().Set("HX-Refresh", "true")
+	}
+
+	tmpl, err := template.ParseFiles("templates/signup-form.html")
+	if err != nil {
+		log.Fatalln(err)
 		return
 	}
-	if SignUpUser(GetConnection(), username, password) {
 
-		http.Redirect(w, r, "/", http.StatusMovedPermanently)
-	} else {
-
-		http.Error(w, "Failed to Sign up.", http.StatusInternalServerError)
+	err = tmpl.ExecuteTemplate(w, "signup-form", args)
+	if err != nil {
+		log.Fatalln(err)
+		return
 	}
+
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
@@ -152,14 +176,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
 		UsernameNotFound:  false,
 		PasswordIncorrect: false,
 	}
-	userDB, err1 := LoginUser(username, password)
+	userDB, err1 := service.LoginUser(username, password)
 	if err1 != nil {
 
 		switch err1.Status {
-		case PasswordIncorrect:
+		case service.PasswordIncorrect:
 			args.PasswordIncorrect = true
 			break
-		case UsernameNotFound:
+		case service.UsernameNotFound:
 			args.UsernameNotFound = true
 			break
 		}

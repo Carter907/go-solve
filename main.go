@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/Carter907/go-solve/db"
+	"github.com/Carter907/go-solve/handlers"
 	"github.com/Carter907/go-solve/model"
 	"log"
 	"net/http"
@@ -17,7 +19,7 @@ func main() {
 		port = "8080"
 	}
 
-	tasks := GetTasks(GetConnection())
+	tasks := db.GetAllTasks(db.GetConnection())
 
 	user := &model.User{
 		ID:       0,
@@ -28,32 +30,32 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-		BaseHandler(w, r, tasks, user)
+		handlers.BaseHandler(w, r, tasks, user)
 	})
 
 	http.HandleFunc("/editor", func(w http.ResponseWriter, r *http.Request) {
 
-		EditorHandler(w, r, tasks, &currTaskIndex)
+		handlers.EditorHandler(w, r, tasks, &currTaskIndex)
 	})
 
 	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {
 
-		RunCodeHandler(w, r, tasks, currTaskIndex)
+		handlers.RunCodeHandler(w, r, tasks, currTaskIndex)
 	})
 
 	http.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) {
 
-		SignupHandler(w, r)
+		handlers.SignupHandler(w, r)
 	})
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 
-		LoginHandler(w, r, user)
+		handlers.LoginHandler(w, r, user)
 	})
 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 
-		LogoutHandler(w, r, user)
+		handlers.LogoutHandler(w, r, user)
 	})
 
 	err := http.ListenAndServe(":"+port, nil)
