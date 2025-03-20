@@ -10,7 +10,8 @@ import (
 	"strconv"
 )
 
-func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, user *model.User) {
+func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
+	user *model.User) {
 	path := r.URL.Path[1:]
 	funcMap := template.FuncMap{
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
@@ -28,10 +29,14 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, use
 			return dict, nil
 		},
 	}
+	type TaskData struct {
+		Task         model.Task
+		TaskProgress string
+	}
 	type BaseArgs struct {
-		Path  string
-		Tasks []model.Task
-		User  *model.User
+		Path     string
+		TaskData []TaskData
+		User     *model.User
 	}
 	var tmpl *template.Template
 
@@ -56,10 +61,38 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, use
 		break
 	}
 
+	taskDataSlice := make([]TaskData, 0)
+
+	for _, task := range tasks {
+		var taskProgress = ""
+
+		if len(user.Username) >= 1 {
+			taskProgress = "not started"
+
+			taskProgresses := service.GetUserProgress(user.ID)
+
+			log.Printf("%v", taskProgresses)
+
+			for _, taskProg := range taskProgresses {
+				if task.ID == taskProg.TaskID {
+					taskProgress = taskProg.Progress
+					break
+				}
+			}
+		}
+
+		taskData := TaskData{
+			Task:         task,
+			TaskProgress: taskProgress,
+		}
+
+		taskDataSlice = append(taskDataSlice, taskData)
+	}
+
 	err := tmpl.Execute(w, BaseArgs{
-		Path:  path,
-		Tasks: tasks,
-		User:  user,
+		Path:     path,
+		TaskData: taskDataSlice,
+		User:     user,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -193,6 +226,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
 
 	if userDB != nil {
 
+		user.ID = userDB.ID
 		user.Username = userDB.Username
 		user.Password = userDB.Password
 

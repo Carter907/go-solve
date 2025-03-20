@@ -5,6 +5,7 @@ import (
 	"github.com/Carter907/go-solve/db"
 	"github.com/Carter907/go-solve/handlers"
 	"github.com/Carter907/go-solve/model"
+	"github.com/Carter907/go-solve/service"
 	"log"
 	"net/http"
 	"os"
@@ -18,8 +19,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-
-	tasks := db.GetAllTasks(db.GetConnection())
+	db.NewConnection()
+	tasks := service.GetAllTasks()
 
 	user := &model.User{
 		ID:       0,

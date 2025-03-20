@@ -7,23 +7,32 @@ import (
 	"github.com/Carter907/go-solve/security"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"sync"
 )
 
-func GetConnection() *sql.DB {
-	db, err := sql.Open("sqlite3", "./data/db")
-	if err != nil {
-		log.Fatal("Failed to connect to sqlite")
-		return nil
-	}
-	return db
+var (
+	once sync.Once
+	Conn *sql.DB
+)
+
+func NewConnection() *sql.DB {
+	once.Do(func() {
+		db, err := sql.Open("sqlite3", "./data/db")
+		if err != nil {
+			log.Fatal("Failed to connect to sqlite")
+		}
+		Conn = db
+	})
+
+	return Conn
 }
 
-func GetUserByUsername(db *sql.DB, username string) (*model.User, *RowError) {
+func GetUserByUsername(username string) (*model.User, *RowError) {
 
 	var id uint
 	var usernameDb string
 	var passwordDb string
-	err := db.QueryRow("select * from user where username = (?)",
+	err := Conn.QueryRow("select * from user where username = (?)",
 		username,
 	).Scan(&usernameDb, &passwordDb, &id)
 	if err != nil {
@@ -42,8 +51,9 @@ func GetUserByUsername(db *sql.DB, username string) (*model.User, *RowError) {
 }
 
 const (
-	RowNotFound  = 1
-	RowNotUnique = 2
+	RowNotFound     = 1
+	RowNotUnique    = 2
+	RowColumnMisuse = 3
 )
 
 type RowStatus uint
@@ -57,13 +67,13 @@ func (r RowError) Error() string {
 	return r.Message
 }
 
-func InsertUser(db *sql.DB, username string, password string) (*model.User, error) {
+func InsertUser(username string, password string) (*model.User, error) {
 
 	var id uint
 	var usernameDB string
 	var passwordDB string
 
-	err := db.QueryRow("select (username) from user where username = (?)",
+	err := Conn.QueryRow("select (username) from user where username = (?)",
 		username).Scan()
 	if err == nil {
 		return nil, &RowError{
@@ -76,7 +86,7 @@ func InsertUser(db *sql.DB, username string, password string) (*model.User, erro
 		return nil, err
 	}
 
-	res, err := db.Exec("insert into user(username, password) values((?), (?))", username,
+	res, err := Conn.Exec("insert into user(username, password) values((?), (?))", username,
 		password)
 	if err != nil {
 		return nil, &InsertError{
@@ -92,7 +102,7 @@ func InsertUser(db *sql.DB, username string, password string) (*model.User, erro
 		}
 	}
 
-	err = db.QueryRow("select * from user where id = (?)",
+	err = Conn.QueryRow("select * from user where id = (?)",
 		insertId).Scan(&usernameDB, &passwordDB, &id)
 	if err != nil {
 		return nil, &RowError{
@@ -123,11 +133,11 @@ func (r InsertError) Error() string {
 	return r.Message
 }
 
-func GetAllTasks(db *sql.DB) []model.Task {
-	rows, err := db.Query("select * from task")
+func GetAllTasks() ([]model.Task, *RowError) {
+	rows, err := Conn.Query("select * from task")
 	if err != nil {
-		log.Fatalln("Failed to query for tasks:", err)
-		return nil
+		log.Fatalln("failed to query:", err)
+		return nil, nil
 	}
 
 	tasks := make([]model.Task, 0)
@@ -142,8 +152,10 @@ func GetAllTasks(db *sql.DB) []model.Task {
 
 		err = rows.Scan(&id, &title, &description, &difficulty, &code, &objective)
 		if err != nil {
-			log.Fatalln("Failed to scan tasks:", err)
-			return nil
+			return nil, &RowError{
+				Status:  RowColumnMisuse,
+				Message: fmt.Sprintln("failed to scan rows:", err.Error()),
+			}
 		}
 
 		task := model.Task{
@@ -156,5 +168,75 @@ func GetAllTasks(db *sql.DB) []model.Task {
 		tasks = append(tasks, task)
 	}
 
-	return tasks
+	return tasks, nil
+}
+
+func GetAllTaskProgresses() []model.TaskProgress {
+
+	rows, err := Conn.Query("select * from task_progress")
+	if err != nil {
+		log.Fatalln("Failed to query for tasks progresses:", err)
+		return nil
+	}
+
+	taskProgresses := make([]model.TaskProgress, 0)
+
+	for rows.Next() {
+		var id uint
+		var userId uint
+		var taskId uint
+		var progress string
+
+		err = rows.Scan(&id, &userId, &taskId, &progress)
+		if err != nil {
+			log.Fatalln("Failed to scan tasks progresses:", err)
+			return nil
+		}
+
+		taskProgress := model.TaskProgress{
+			ID:       id,
+			UserID:   userId,
+			TaskID:   taskId,
+			Progress: progress,
+		}
+		taskProgresses = append(taskProgresses, taskProgress)
+	}
+
+	return taskProgresses
+}
+
+func GetTaskProgressByUserID(userID uint) ([]model.TaskProgress, *RowError) {
+
+	rows, err := Conn.Query("select * from task_progress where user_id = (?)",
+		userID,
+	)
+	if err != nil {
+		log.Fatalln("failed to query:", err)
+		return nil, nil
+	}
+	taskProgress := make([]model.TaskProgress, 0)
+
+	for rows.Next() {
+		var id uint
+		var userId uint
+		var taskId uint
+		var progress string
+
+		err := rows.Scan(&id, &userId, &taskId, &progress)
+		if err != nil {
+			return nil, &RowError{
+				Status:  RowColumnMisuse,
+				Message: fmt.Sprintln("failed to scan rows:", err.Error()),
+			}
+		}
+
+		taskProgress = append(taskProgress, model.TaskProgress{
+			ID:       id,
+			UserID:   userId,
+			TaskID:   taskId,
+			Progress: progress,
+		})
+	}
+
+	return taskProgress, nil
 }

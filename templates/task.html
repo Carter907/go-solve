@@ -1,15 +1,54 @@
 {{ define "task" }}
 
     <a class="cursor-pointer" hx-get="/editor"
-       hx-vals='{ "taskIndex": "0" }'
+       hx-vals='{ "taskIndex": "{{ .Index }}" }'
        hx-swap="outerHTML" hx-target="#task-list">
 
-        {{ with .Task }}
-            <div class="bg-neutral-900 rounded-full p-10 w-min-max">
-                {{ .Title }}
-                <p class="font-light opacity-50">
-                    {{ .Description }}
-                </p>
+
+        {{ with .TaskData }}
+
+            <div class="hover:border-neutral-700 border-neutral-800 border bg-neutral-900
+            rounded-full p-10
+            w-min-max
+            flex
+            flex-row
+            justify-end">
+
+                <div class="flex-grow">
+                    {{ with .Task }}
+                        <span class="text-2xl">{{ .Title }}</span>
+                        <span class="font-light opacity-50 px-5 uppercase"> {{
+                            .Difficulty
+                            }}</span>
+                        <p class="font-light opacity-50">
+                            {{ .Description }}
+                        </p>
+                    {{ end }}
+                </div>
+
+                {{ with .TaskProgress }}
+                    {{ if eq . "completed" }}
+                        <div class="self-center border px-2 py-1 border-green-300 bg-green-500 bg-opacity-20
+                rounded-full
+                font-normal">
+                            completed
+                        </div>
+                    {{ else if eq . "in progress" }}
+                        <div class="self-center border px-2 py-1 border-yellow-300 bg-yellow-500
+                bg-opacity-20
+                rounded-full
+                font-normal">
+                            in progress
+                        </div>
+                    {{ else if eq . "not started" }}
+                        <div class="self-center border px-2 py-1 border-red-300 bg-red-500 bg-opacity-20
+                rounded-full
+                font-normal">
+                            not started
+                        </div>
+
+                    {{ end }}
+                {{ end }}
             </div>
         {{ end }}
     </a>

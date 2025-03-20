@@ -14,7 +14,6 @@
         </script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.2/ace.js"></script>
         <script src="https://unpkg.com/htmx.org@2.0.0"></script>
-
     </head>
     <body class="dark bg-neutral-800 h-screen flex flex-col text-neutral-200">
 
@@ -23,7 +22,7 @@
     {{ if eq .Path "signup-form"}}
         {{ template "signup-form" }}
     {{ else if eq .Path "" }}
-        {{ template "task-list" .Tasks }}
+        {{ template "task-list" .TaskData }}
     {{ end }}
 
     </body>

@@ -10,7 +10,7 @@
             <ul class="font-bold">
                 {{ range $index, $value := . }}
                     <li class="mt-5">
-                        {{ template "task" dict "Index" $index "Task" $value }}
+                        {{ template "task" dict "Index" $index "TaskData" $value }}
                     </li>
                 {{ end }}
             </ul>

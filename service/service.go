@@ -11,7 +11,7 @@ import (
 
 func LoginUser(username, password string) (*model.User, *LoginError) {
 
-	userDB, err := db.GetUserByUsername(db.GetConnection(), username)
+	userDB, err := db.GetUserByUsername(username)
 	if err != nil {
 		return nil, &LoginError{
 			Status:  UsernameNotFound,
@@ -45,7 +45,7 @@ func (t LoginError) Error() string {
 }
 
 func SignUpUser(username, password string) (*model.User, *SignUpError) {
-	userDB, err := db.InsertUser(db.GetConnection(), username, password)
+	userDB, err := db.InsertUser(username, password)
 	if err != nil {
 		var rowError *db.RowError
 		if errors.As(err, &rowError) && rowError.Status == db.RowNotUnique {
@@ -76,4 +76,26 @@ type SignUpError struct {
 
 func (t SignUpError) Error() string {
 	return t.Message
+}
+
+func GetUserProgress(userID uint) []model.TaskProgress {
+
+	taskProgresses, err := db.GetTaskProgressByUserID(userID)
+	if err != nil {
+		log.Fatalln("failed to get all task progress:", err.Error())
+		return nil
+	}
+
+	return taskProgresses
+}
+
+func GetAllTasks() []model.Task {
+
+	tasks, err := db.GetAllTasks()
+	if err != nil {
+		log.Fatalln("failed to get all tasks:", err.Error())
+		return nil
+	}
+	
+	return tasks
 }
