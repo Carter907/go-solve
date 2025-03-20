@@ -41,7 +41,7 @@ Go solve is a programming practice website for golang. Solve basic programming p
 
 Go-solve was highly influenced by the coding practice website [codingbat.com](https://codingbat.com) which only supports Java and Python. Once this project is done, I plan to create a fork of it for other languages.
 
-Golang was chosen for the creation of the server for it's simplicity and ease of use.
+Golang was chosen for it's simplicity and ease of use.
 
 
 
@@ -52,7 +52,7 @@ Golang was chosen for the creation of the server for it's simplicity and ease of
 <!-- GETTING STARTED -->
 ## Getting Started
 
-To get a local copy up and running follow these simple example steps.
+To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
@@ -65,7 +65,6 @@ Clone the repo
    git clone https://github.com/Carter907/go-solve.git
    ```
 
-<!-- USAGE EXAMPLES -->
 ## Usage
 
 Run the server locally
