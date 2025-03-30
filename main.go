@@ -19,8 +19,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static", fs)
+	fs := http.FileServer(http.Dir("static/"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	db.NewConnection()
 	tasks := service.GetAllTasks()
