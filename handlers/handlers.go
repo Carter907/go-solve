@@ -13,7 +13,7 @@ import (
 func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
 	user *model.User) {
 	fmt.Println("base handler called")
-	path := r.URL.Path[5:]
+	path := r.URL.Path[1:]
 	funcMap := template.FuncMap{
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
