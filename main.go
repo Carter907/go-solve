@@ -61,10 +61,6 @@ func main() {
 		handlers.LogoutHandler(w, r, user)
 	})
 
-	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.RedirectHandler("/static/favicon.ico", 200)
-	})
-
 	err := http.ListenAndServe(":"+port, nil)
 
 	if err != nil {
