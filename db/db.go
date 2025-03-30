@@ -159,6 +159,7 @@ func GetAllTasks() ([]model.Task, *RowError) {
 		}
 
 		task := model.Task{
+			ID:          id,
 			Title:       title,
 			Description: description,
 			Difficulty:  difficulty,

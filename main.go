@@ -41,7 +41,7 @@ func main() {
 
 	http.HandleFunc("/run-code", func(w http.ResponseWriter, r *http.Request) {
 
-		handlers.RunCodeHandler(w, r, tasks, currTaskIndex)
+		handlers.RunCodeHandler(w, r, &tasks[currTaskIndex])
 	})
 
 	http.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) {

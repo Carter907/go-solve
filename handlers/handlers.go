@@ -66,12 +66,12 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
 	for _, task := range tasks {
 		var taskProgress = ""
 
+		fmt.Println("task: ", task.ID)
+
 		if len(user.Username) >= 1 {
 			taskProgress = "not started"
 
 			taskProgresses := service.GetUserProgress(user.ID)
-
-			log.Printf("%v", taskProgresses)
 
 			for _, taskProg := range taskProgresses {
 				if task.ID == taskProg.TaskID {
@@ -124,7 +124,7 @@ func EditorHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, c
 	}
 }
 
-func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, taskIndex int) {
+func RunCodeHandler(w http.ResponseWriter, r *http.Request, task *model.Task) {
 
 	err := r.ParseForm()
 	if err != nil {
@@ -135,8 +135,8 @@ func RunCodeHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, 
 
 	editorContent := r.FormValue("editorContent")
 
-	tasks[taskIndex].Code = editorContent
-	taskResult := service.RunCode(&tasks[taskIndex]) // goes to TestSolution
+	task.Code = editorContent
+	taskResult := service.RunCode(task) // goes to TestSolution
 
 	_, err = fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
 	if err != nil {
