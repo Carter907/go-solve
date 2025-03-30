@@ -19,6 +19,9 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static", fs)
+
 	db.NewConnection()
 	tasks := service.GetAllTasks()
 
@@ -30,7 +33,6 @@ func main() {
 	currTaskIndex := 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
 		handlers.BaseHandler(w, r, tasks, user)
 	})
 
@@ -57,6 +59,10 @@ func main() {
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 
 		handlers.LogoutHandler(w, r, user)
+	})
+
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.RedirectHandler("/static/favicon.ico", 200)
 	})
 
 	err := http.ListenAndServe(":"+port, nil)
