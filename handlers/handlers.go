@@ -72,7 +72,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
 		if len(user.Username) >= 1 {
 			taskProgress = "not started"
 
-			taskProgresses := service.GetUserProgress(user.ID)
+			taskProgresses := service.GetAllTaskProgress(user.ID)
 
 			for _, taskProg := range taskProgresses {
 				if task.ID == taskProg.TaskID {
@@ -125,7 +125,7 @@ func EditorHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, c
 	}
 }
 
-func RunCodeHandler(w http.ResponseWriter, r *http.Request, task *model.Task) {
+func RunCodeHandler(w http.ResponseWriter, r *http.Request, task *model.Task, user *model.User) {
 
 	err := r.ParseForm()
 	if err != nil {
@@ -137,7 +137,21 @@ func RunCodeHandler(w http.ResponseWriter, r *http.Request, task *model.Task) {
 	editorContent := r.FormValue("editorContent")
 
 	task.Code = editorContent
+
+	taskProgress := service.GetTaskProgress(user.ID, task.ID)
 	taskResult := service.RunCode(task) // goes to TestSolution
+
+	if taskProgress == nil && taskResult.Passed {
+		service.InsertTaskProgress(user.ID, task.ID, "completed")
+	} else if taskResult.Passed {
+		service.UpdateTaskProgress(taskProgress.ID, "completed")
+	} else if taskProgress == nil {
+		service.InsertTaskProgress(user.ID, task.ID, "in progress")
+	} else {
+		service.UpdateTaskProgress(taskProgress.ID, "in progress")
+	}
+	
+	
 
 	_, err = fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
 	if err != nil {

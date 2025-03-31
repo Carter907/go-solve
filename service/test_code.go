@@ -3,11 +3,12 @@ package service
 import (
 	"bytes"
 	"fmt"
-	"github.com/Carter907/go-solve/model"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/Carter907/go-solve/model"
 )
 
 func RunCode(task *model.Task) model.TaskResult {
@@ -17,48 +18,52 @@ func RunCode(task *model.Task) model.TaskResult {
 			strings.ToLower(task.Title), " ", "_"),
 	)
 	fmt.Println(path)
-	out, errOut := TestSolution(task.Code, path)
-
-	return model.TaskResult{
-		Out: out.String(),
-		Err: errOut.String(),
+	res, err := TestSolution(task.Code, path)
+	if err != nil {
+		log.Fatalf("Failed to run test code: %v\n", err)
 	}
+
+	return res
 }
 
-func TestSolution(code string, path string) (out, errOut bytes.Buffer) {
+func TestSolution(code string, path string) (model.TaskResult, error) {
 
 	fmt.Println("testing solution...")
 	fmt.Println("code --\n", code)
 	fmt.Println("path --", path)
 
 	file, err := os.Create(path + "/solution.go")
-
 	if err != nil {
-		log.Fatalln("invalid path: ", err)
+		log.Fatalf("Failed to create solution file: %v\n", err)
 	}
 
 	_, err = file.WriteString(code)
-
 	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}
+		log.Fatalf("Error writing to solution file: %v\n", err)
 	}
 
 	err = file.Close()
-
 	if err != nil {
-		return
+		log.Fatalf("Error closing solution file: %v\n", err)
 	}
 
 	cmd := exec.Command("go", "build", path+"/solution.go") // test that the code compiles
+
+	out := bytes.Buffer{}
+	errOut := bytes.Buffer{}
 
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
 
 	err = cmd.Run()
-
 	if err != nil {
-		fmt.Println("Failed to run go build:", errOut.String())
-		return
+		log.Printf("Error running build command: %v\n", err)
+		return model.TaskResult{
+			Out:     out.String(),
+			Err:     errOut.String(),
+			Passed:  false,
+			CompErr: true,
+		}, nil
 	}
 
 	cmd = exec.Command("go", "test", path) // test that the code passes the tests
@@ -70,13 +75,22 @@ func TestSolution(code string, path string) (out, errOut bytes.Buffer) {
 	cmd.Stderr = &errOut
 
 	err = cmd.Run()
-
 	if err != nil {
-		fmt.Println("Failed to run go test:", errOut.String())
-		return
+		log.Printf("Error running tests: %v\n", err)
+		return model.TaskResult{
+			Out:     out.String(),
+			Err:     errOut.String(),
+			Passed:  false,
+			CompErr: false,
+		}, nil
 	}
 
 	fmt.Println("Tests Passed!")
 
-	return
+	return model.TaskResult{
+		Out:     out.String(),
+		Err:     errOut.String(),
+		Passed:  true,
+		CompErr: false,
+	}, nil
 }

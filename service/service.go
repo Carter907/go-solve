@@ -3,10 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
+
 	"github.com/Carter907/go-solve/db"
 	"github.com/Carter907/go-solve/model"
 	"github.com/Carter907/go-solve/security"
-	"log"
 )
 
 func LoginUser(username, password string) (*model.User, *LoginError) {
@@ -78,7 +79,7 @@ func (t SignUpError) Error() string {
 	return t.Message
 }
 
-func GetUserProgress(userID uint) []model.TaskProgress {
+func GetAllTaskProgress(userID uint) []model.TaskProgress {
 
 	taskProgresses, err := db.GetTaskProgressByUserID(userID)
 	if err != nil {
@@ -89,6 +90,21 @@ func GetUserProgress(userID uint) []model.TaskProgress {
 	return taskProgresses
 }
 
+func GetTaskProgress(userID uint, taskID uint) *model.TaskProgress {
+	taskProgress, err := db.GetTaskProgressByUserIDAndTaskID(userID, taskID)
+	if err != nil {
+		switch err.Status {
+		case db.RowNotFound:
+			return nil
+		default:
+			log.Fatalln("failed to get task progress:", err.Error())
+		}
+		return nil
+	}
+
+	return taskProgress
+}
+
 func GetAllTasks() []model.Task {
 
 	tasks, err := db.GetAllTasks()
@@ -96,6 +112,25 @@ func GetAllTasks() []model.Task {
 		log.Fatalln("failed to get all tasks:", err.Error())
 		return nil
 	}
-	
+
 	return tasks
+}
+func InsertTaskProgress(userID uint, taskID uint, progress string) (*model.TaskProgress, error) {
+	taskProgress, err := db.InsertTaskProgress(userID, taskID, progress)
+	if err != nil {
+		log.Fatalln("failed to insert task progress:", err.Error())
+		return nil, err
+	}
+
+	return taskProgress, nil
+}
+
+func UpdateTaskProgress(taskProgressID uint, progress string) error {
+	err := db.UpdateTaskProgress(taskProgressID, progress)
+	if err != nil {
+		log.Fatalln("failed to insert task progress:", err.Error())
+		return err
+	}
+
+	return nil
 }

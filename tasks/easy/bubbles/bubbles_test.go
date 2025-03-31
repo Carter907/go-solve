@@ -10,7 +10,7 @@ func TestBubbles(t *testing.T) {
 	otherData := []int{3, 7, 3, 1, 8, 2, 3, 9}
 
 	slices.Sort(testData)
-	slices.Sort(otherData)
+	Bubbles(otherData)
 
 	if !slices.Equal(testData, otherData) {
 		t.Fatalf("Bubbles() did not sort the data! returned %v", otherData)
