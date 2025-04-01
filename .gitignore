@@ -1,5 +1,4 @@
 .idea/
-frontend/
-data/
 
 tasks/easy/**/solution.go
+/data/
