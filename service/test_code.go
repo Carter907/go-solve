@@ -42,7 +42,7 @@ func TestSolution(code string, taskPath string) (model.TaskResult, error) {
 
 	// 2. Write minimal go.mod for isolated execution
 	goModContent := "module task\n\ngo 1.24\n"
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0o644); err != nil {
 		return model.TaskResult{}, fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
@@ -60,7 +60,7 @@ func TestSolution(code string, taskPath string) (model.TaskResult, error) {
 			if err != nil {
 				return model.TaskResult{}, fmt.Errorf("failed to read test file %q: %w", entry.Name(), err)
 			}
-			if err := os.WriteFile(filepath.Join(tmpDir, entry.Name()), content, 0644); err != nil {
+			if err := os.WriteFile(filepath.Join(tmpDir, entry.Name()), content, 0o644); err != nil {
 				return model.TaskResult{}, fmt.Errorf("failed to copy test file %q: %w", entry.Name(), err)
 			}
 		}
@@ -72,12 +72,12 @@ func TestSolution(code string, taskPath string) (model.TaskResult, error) {
 
 	// 4. Write user submission into the temp directory
 	solutionPath := filepath.Join(tmpDir, "solution.go")
-	if err := os.WriteFile(solutionPath, []byte(code), 0644); err != nil {
+	if err := os.WriteFile(solutionPath, []byte(code), 0o644); err != nil {
 		return model.TaskResult{}, fmt.Errorf("failed to write solution file: %w", err)
 	}
 
 	// 5. Execute go test with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "go", "test", "-v", ".")
@@ -87,7 +87,7 @@ func TestSolution(code string, taskPath string) (model.TaskResult, error) {
 
 	if ctx.Err() == context.DeadlineExceeded {
 		return model.TaskResult{
-			Err:     "Execution timed out (5s limit exceeded). Check for infinite loops or blocking calls.",
+			Err:     "Execution timed out (10s limit exceeded). Check for infinite loops or blocking calls.",
 			Passed:  false,
 			CompErr: false,
 		}, nil

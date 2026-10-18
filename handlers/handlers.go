@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Carter907/go-solve/db"
 	"github.com/Carter907/go-solve/model"
 	"github.com/Carter907/go-solve/service"
 )
@@ -59,7 +61,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch path {
 	case "signup-form":
-		var t, err = template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
+		t, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -78,7 +80,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	taskDataSlice := make([]TaskData, 0, len(tasks))
 
 	for _, task := range tasks {
-		var taskProgress = ""
+		taskProgress := ""
 
 		if len(user.Username) >= 1 && user.ID > 0 {
 			taskProgress = "not started"
@@ -153,6 +155,33 @@ func EditorHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+type HealthResponse struct {
+	Status   string `json:"status"`
+	Database string `json:"database"`
+}
+
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	sqlDB, err := db.Conn.DB()
+	if err != nil || sqlDB.Ping() != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+
+		_ = json.NewEncoder(w).Encode(HealthResponse{
+			Status:   "unhealthy",
+			Database: "unreachable",
+		})
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(HealthResponse{
+		Status:   "ok",
+		Database: "connected",
+	})
 }
 
 func RunCodeHandler(w http.ResponseWriter, r *http.Request) {

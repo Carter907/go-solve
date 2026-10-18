@@ -79,7 +79,7 @@ func TestTestSolution_Timeout(t *testing.T) {
 import "time"
 
 func ReturnMessage() string {
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 	return "Hello World"
 }
 `

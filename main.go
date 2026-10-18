@@ -34,6 +34,7 @@ func main() {
 	http.HandleFunc("/signup", handlers.SignupHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
 	http.HandleFunc("/logout", handlers.LogoutHandler)
+	http.HandleFunc("/healthz", handlers.HealthCheckHandler)
 
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
