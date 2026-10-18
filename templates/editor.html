@@ -23,7 +23,7 @@
 
     <form
       hx-target="#console"
-      hx-vals="js:{editorContent: editor.getValue()}"
+      hx-vals="js:{editorContent: editor.getValue(), taskID: '{{ .ID }}'}"
       hx-post="/run-code"
       hx-swap="textContent"
     >

@@ -1,7 +1,7 @@
 {{ define "task" }}
 
     <a class="cursor-pointer" hx-get="/editor"
-       hx-vals='{ "taskIndex": "{{ .Index }}" }'
+       hx-vals='{ "taskID": "{{ .TaskData.Task.ID }}", "taskIndex": "{{ .Index }}" }'
        hx-swap="outerHTML" hx-target="#task-list">
 
 

@@ -2,18 +2,34 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/Carter907/go-solve/model"
-	"github.com/Carter907/go-solve/service"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/Carter907/go-solve/model"
+	"github.com/Carter907/go-solve/service"
 )
 
-func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
-	user *model.User) {
-	fmt.Println("base handler called")
+const SessionCookieName = "session_token"
+
+// GetUserFromRequest extracts and authenticates the user from the session cookie.
+func GetUserFromRequest(r *http.Request) *model.User {
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil || cookie.Value == "" {
+		return nil
+	}
+	return service.GetUserBySessionToken(cookie.Value)
+}
+
+func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path[1:]
+	user := GetUserFromRequest(r)
+	if user == nil {
+		user = &model.User{}
+	}
+
 	funcMap := template.FuncMap{
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
@@ -48,32 +64,25 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		tmpl = t
-		break
 	default:
 		t, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		tmpl = t
-		break
 	}
 
-	taskDataSlice := make([]TaskData, 0)
+	tasks := service.GetAllTasks()
+	taskDataSlice := make([]TaskData, 0, len(tasks))
 
 	for _, task := range tasks {
 		var taskProgress = ""
 
-		fmt.Println("task: ", task.ID)
-
-		if len(user.Username) >= 1 {
+		if len(user.Username) >= 1 && user.ID > 0 {
 			taskProgress = "not started"
-
 			taskProgresses := service.GetAllTaskProgress(user.ID)
-
 			for _, taskProg := range taskProgresses {
 				if task.ID == taskProg.TaskID {
 					taskProgress = taskProg.Progress
@@ -98,60 +107,105 @@ func BaseHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task,
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
 }
 
-func EditorHandler(w http.ResponseWriter, r *http.Request, tasks []model.Task, currTaskIndex *int) {
+func EditorHandler(w http.ResponseWriter, r *http.Request) {
+	var task *model.Task
 
-	index, err := strconv.Atoi(r.FormValue("taskIndex"))
-	if err != nil {
-		http.Error(w, "Failed to convert the task index to an int", http.StatusInternalServerError)
-		return
+	// Check if taskID is provided (preferred)
+	taskIDStr := r.FormValue("taskID")
+	if taskIDStr != "" {
+		id, err := strconv.Atoi(taskIDStr)
+		if err == nil {
+			t, err := service.GetTaskByID(uint(id))
+			if err == nil {
+				task = t
+			}
+		}
 	}
 
-	*currTaskIndex = index
+	// Fallback to taskIndex for backwards compatibility
+	if task == nil {
+		taskIndexStr := r.FormValue("taskIndex")
+		if taskIndexStr != "" {
+			index, err := strconv.Atoi(taskIndexStr)
+			if err == nil {
+				tasks := service.GetAllTasks()
+				if index >= 0 && index < len(tasks) {
+					task = &tasks[index]
+				}
+			}
+		}
+	}
+
+	if task == nil {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	}
 
 	tmpl, err := template.ParseFiles("templates/editor.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	task := &tasks[index]
 
-	fmt.Printf("Sending editor template with task: \n%s\n", task.Code)
 	err = tmpl.ExecuteTemplate(w, "editor", task)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func RunCodeHandler(w http.ResponseWriter, r *http.Request, task *model.Task, user *model.User) {
-
+func RunCodeHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-
 		http.Error(w, "Failed to parse form", http.StatusInternalServerError)
 		return
 	}
 
 	editorContent := r.FormValue("editorContent")
+	taskIDStr := r.FormValue("taskID")
 
-	task.Code = editorContent
-
-	taskProgress := service.GetTaskProgress(user.ID, task.ID)
-	taskResult := service.RunCode(task) // goes to TestSolution
-
-	if taskProgress == nil && taskResult.Passed {
-		service.InsertTaskProgress(user.ID, task.ID, "completed")
-	} else if taskResult.Passed {
-		service.UpdateTaskProgress(taskProgress.ID, "completed")
-	} else if taskProgress == nil {
-		service.InsertTaskProgress(user.ID, task.ID, "in progress")
-	} else {
-		service.UpdateTaskProgress(taskProgress.ID, "in progress")
+	var task *model.Task
+	if taskIDStr != "" {
+		id, err := strconv.Atoi(taskIDStr)
+		if err == nil {
+			t, err := service.GetTaskByID(uint(id))
+			if err == nil {
+				task = t
+			}
+		}
 	}
-	
-	
+
+	if task == nil {
+		// Fallback to first available task if no taskID provided
+		tasks := service.GetAllTasks()
+		if len(tasks) > 0 {
+			task = &tasks[0]
+		} else {
+			http.Error(w, "No tasks available to run", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Clone task for evaluation to ensure starter code in catalog is never mutated
+	evalTask := *task
+	evalTask.Code = editorContent
+
+	taskResult := service.RunCode(&evalTask)
+
+	user := GetUserFromRequest(r)
+	if user != nil && user.ID > 0 {
+		taskProgress := service.GetTaskProgress(user.ID, task.ID)
+		if taskProgress == nil && taskResult.Passed {
+			service.InsertTaskProgress(user.ID, task.ID, "completed")
+		} else if taskResult.Passed {
+			service.UpdateTaskProgress(taskProgress.ID, "completed")
+		} else if taskProgress == nil {
+			service.InsertTaskProgress(user.ID, task.ID, "in progress")
+		} else {
+			service.UpdateTaskProgress(taskProgress.ID, "in progress")
+		}
+	}
 
 	_, err = fmt.Fprintf(w, "tests: \n%v\n\n err: \n%v", taskResult.Out, taskResult.Err)
 	if err != nil {
@@ -169,7 +223,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirm-password")
-	fmt.Println("signing up as ", username, confirmPassword)
+
 	type SignUpArgs struct {
 		UsernameTaken      bool
 		PasswordsDontMatch bool
@@ -192,20 +246,20 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/signup-form.html")
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Failed to parse signup template: %v\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = tmpl.ExecuteTemplate(w, "signup-form", args)
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Failed to execute signup template: %v\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
-
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, "Failed to parse form", http.StatusInternalServerError)
@@ -213,7 +267,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	fmt.Println("logging in as", username, password)
 
 	type LoginArgs struct {
 		UsernameNotFound  bool
@@ -223,48 +276,64 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
 		UsernameNotFound:  false,
 		PasswordIncorrect: false,
 	}
+
 	userDB, err1 := service.LoginUser(username, password)
 	if err1 != nil {
-
 		switch err1.Status {
 		case service.PasswordIncorrect:
 			args.PasswordIncorrect = true
-			break
 		case service.UsernameNotFound:
 			args.UsernameNotFound = true
-			break
 		}
-	} else {
+	} else if userDB != nil {
+		session, err := service.CreateSession(userDB.ID)
+		if err != nil {
+			log.Printf("Failed to create session: %v\n", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 
+		http.SetCookie(w, &http.Cookie{
+			Name:     SessionCookieName,
+			Value:    session.Token,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  session.ExpiresAt,
+		})
 		w.Header().Set("HX-Refresh", "true")
 	}
 
-	if userDB != nil {
-
-		user.ID = userDB.ID
-		user.Username = userDB.Username
-		user.Password = userDB.Password
-
-	}
 	tmpl, err := template.ParseFiles("templates/login-form.html")
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Failed to parse login template: %v\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = tmpl.ExecuteTemplate(w, "login-form", args)
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Failed to execute login template: %v\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
 
-func LogoutHandler(w http.ResponseWriter, r *http.Request, user *model.User) {
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(SessionCookieName)
+	if err == nil && cookie.Value != "" {
+		_ = service.DeleteSession(cookie.Value)
+	}
 
-	fmt.Println("logging out")
+	http.SetCookie(w, &http.Cookie{
+		Name:     SessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+	})
 
-	user.Username = ""
-	user.Password = ""
-
-	http.Redirect(w, r, "/", http.StatusMovedPermanently)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
