@@ -1,12 +1,14 @@
 package service
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Carter907/go-solve/model"
 )
@@ -17,79 +19,94 @@ func RunCode(task *model.Task) model.TaskResult {
 		strings.ReplaceAll(
 			strings.ToLower(task.Title), " ", "_"),
 	)
-	fmt.Println(path)
 	res, err := TestSolution(task.Code, path)
 	if err != nil {
-		log.Fatalf("Failed to run test code: %v\n", err)
+		log.Printf("Error running test code: %v\n", err)
+		return model.TaskResult{
+			Err:     fmt.Sprintf("Internal error: %v", err),
+			Passed:  false,
+			CompErr: true,
+		}
 	}
 
 	return res
 }
 
-func TestSolution(code string, path string) (model.TaskResult, error) {
-
-	fmt.Println("testing solution...")
-	fmt.Println("code --\n", code)
-	fmt.Println("path --", path)
-
-	file, err := os.Create(path + "/solution.go")
+func TestSolution(code string, taskPath string) (model.TaskResult, error) {
+	// 1. Create an isolated temporary directory
+	tmpDir, err := os.MkdirTemp("", "gosolve-eval-*")
 	if err != nil {
-		log.Fatalf("Failed to create solution file: %v\n", err)
+		return model.TaskResult{}, fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// 2. Write minimal go.mod for isolated execution
+	goModContent := "module task\n\ngo 1.24\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0644); err != nil {
+		return model.TaskResult{}, fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
-	_, err = file.WriteString(code)
+	// 3. Copy only the task's test files (*_test.go) into the temp directory
+	entries, err := os.ReadDir(taskPath)
 	if err != nil {
-		log.Fatalf("Error writing to solution file: %v\n", err)
+		return model.TaskResult{}, fmt.Errorf("failed to read task directory %q: %w", taskPath, err)
 	}
 
-	err = file.Close()
-	if err != nil {
-		log.Fatalf("Error closing solution file: %v\n", err)
+	testFileFound := false
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), "_test.go") {
+			testFileFound = true
+			content, err := os.ReadFile(filepath.Join(taskPath, entry.Name()))
+			if err != nil {
+				return model.TaskResult{}, fmt.Errorf("failed to read test file %q: %w", entry.Name(), err)
+			}
+			if err := os.WriteFile(filepath.Join(tmpDir, entry.Name()), content, 0644); err != nil {
+				return model.TaskResult{}, fmt.Errorf("failed to copy test file %q: %w", entry.Name(), err)
+			}
+		}
 	}
 
-	cmd := exec.Command("go", "build", path+"/solution.go") // test that the code compiles
+	if !testFileFound {
+		return model.TaskResult{}, fmt.Errorf("no test files found in %q", taskPath)
+	}
 
-	out := bytes.Buffer{}
-	errOut := bytes.Buffer{}
+	// 4. Write user submission into the temp directory
+	solutionPath := filepath.Join(tmpDir, "solution.go")
+	if err := os.WriteFile(solutionPath, []byte(code), 0644); err != nil {
+		return model.TaskResult{}, fmt.Errorf("failed to write solution file: %w", err)
+	}
 
-	cmd.Stdout = &out
-	cmd.Stderr = &errOut
+	// 5. Execute go test with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error running build command: %v\n", err)
+	cmd := exec.CommandContext(ctx, "go", "test", "-v", ".")
+	cmd.Dir = tmpDir
+	out, err := cmd.CombinedOutput()
+	outputStr := string(out)
+
+	if ctx.Err() == context.DeadlineExceeded {
 		return model.TaskResult{
-			Out:     out.String(),
-			Err:     errOut.String(),
-			Passed:  false,
-			CompErr: true,
-		}, nil
-	}
-
-	cmd = exec.Command("go", "test", path) // test that the code passes the tests
-
-	out.Reset()
-	errOut.Reset()
-
-	cmd.Stdout = &out
-	cmd.Stderr = &errOut
-
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error running tests: %v\n", err)
-		return model.TaskResult{
-			Out:     out.String(),
-			Err:     errOut.String(),
+			Err:     "Execution timed out (5s limit exceeded). Check for infinite loops or blocking calls.",
 			Passed:  false,
 			CompErr: false,
 		}, nil
 	}
 
-	fmt.Println("Tests Passed!")
+	if err != nil {
+		compErr := strings.Contains(outputStr, "build failed") ||
+			strings.Contains(outputStr, "syntax error") ||
+			strings.Contains(outputStr, "undefined:") ||
+			strings.Contains(outputStr, "cannot use")
+		return model.TaskResult{
+			Out:     outputStr,
+			Passed:  false,
+			CompErr: compErr,
+		}, nil
+	}
 
 	return model.TaskResult{
-		Out:     out.String(),
-		Err:     errOut.String(),
+		Out:     outputStr,
 		Passed:  true,
 		CompErr: false,
 	}, nil
