@@ -1,4 +1,6 @@
 .idea/
 
-tasks/easy/**/solution.go
 /data/
+*.db
+*.sqlite
+*.sqlite3
