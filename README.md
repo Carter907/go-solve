@@ -1,164 +1,136 @@
-## Go Solve!
+# Go-Solve 🚀
 
-![License](https://img.shields.io/badge/license-GPL3-blue.svg) <!-- Replace with your license -->
+[![Go Version](https://img.shields.io/badge/go-1.24+-00ADD8.svg?style=flat&logo=go)](https://golang.org)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![HTMX](https://img.shields.io/badge/frontend-HTMX-336699.svg)](https://htmx.org)
+[![Tailwind CSS](https://img.shields.io/badge/style-Tailwind_CSS-38B2AC.svg)](https://tailwindcss.com)
 
+**Go-Solve** is an open-source, web-based programming practice platform for the Go programming language (inspired by CodingBat). Learners solve algorithmic challenges directly in an in-browser code editor, execute their code against real-time unit test suites using HTMX, and track their progress across difficulty tiers.
 
+---
 
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a id="readme-top"></a>
+## 🌟 Key Features
 
+- **Interactive In-Browser Editor:** Self-hosted Ace Editor with Go syntax highlighting and dark Gruvbox styling.
+- **Isolated Code Execution:** User code is compiled and tested inside ephemeral directories with hard execution timeouts to terminate infinite loops.
+- **Progress Tracking & User Accounts:** Secure password authentication using `bcrypt` (cost 14) and 30-day session cookies to preserve progress across visits. Anonymous practice is fully supported.
+- **Categorized Problem Catalog:** Challenges grouped by concept: *Basics*, *Strings*, *Slices & Sorting*, and *Maps & Structs*.
+- **Pre-Parsed Template Registry:** Fast server-side HTML rendering (`html/template`) compiled on application startup with zero disk reads on request paths.
+- **Zero Heavy Frontend Frameworks:** Dynamic UI swaps powered entirely by HTMX without heavy client-side JavaScript bundles.
 
+---
 
+## 🏗️ Architecture
 
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-  </ol>
-</details>
+```mermaid
+flowchart LR
+    Client["Browser (HTMX + Ace)"]
+    Mux["HTTP Mux (main.go)"]
+    Handler["Handlers Layer"]
+    Service["Service / DB Layer"]
+    Runner["Ephemeral Runner (service/test_code.go)"]
+    DB[("SQLite (GORM)")]
 
-
-
-<!-- ABOUT THE PROJECT -->
-## About The Project
-
-Go solve is a programming practice website for golang. Solve basic programming problems with a wide breadth of different categorizations and difficulty. Problems are called tasks.
-
-Go-solve was highly influenced by the coding practice website [codingbat.com](https://codingbat.com) which only supports Java and Python. Once this project is done, I plan to create a fork of it for other languages.
-
-Golang was chosen for it's simplicity and ease of use.
-
-
-
-
-
-
-
-<!-- GETTING STARTED -->
-## Getting Started
-
-To get a local copy up and running follow these simple steps.
-
-### Prerequisites
-
-- Go 1.24 installed
-
-### Installation
-
-Clone the repo
-   ```sh
-   git clone https://github.com/Carter907/go-solve.git
-   ```
-
-## Usage
-
-Run the server locally
-```sh
-go run main.go
+    Client -->|HTTP / HTMX| Mux
+    Mux --> Handler
+    Handler --> Service
+    Service --> DB
+    Service -->|RunCode| Runner
+    Runner -->|os.MkdirTemp + go test| Runner
+    Handler -->|HTML Fragment / 200 OK| Client
 ```
 
+---
 
+## 🚀 Quickstart
 
-<!-- ROADMAP -->
-## Roadmap
+### Prerequisites
+- [Go 1.24+](https://go.dev/dl/) installed (`go version`)
+- Git
 
-- [ ] Finish sign up page
-- [ ] Add Log in logic
-- [ ] Add logic for task completed
-- [ ] set up rdbms or nosql db
-- [ ] Add Docker for containerized testing
-- [ ] Add User Management System
-- [ ] Add database for Task info
-- [ ] Add database for user login info
+### Running Locally
+```sh
+# 1. Clone repository
+git clone https://github.com/Carter907/go-solve.git
+cd go-solve
 
+# 2. Start the server (auto-migrates SQLite and seeds default challenges)
+go run main.go
 
-See the [open issues](https://github.com/Carter907/go-solve/issues) for a full list of proposed features (and known issues).
+# 3. Open in browser
+open http://localhost:8080
+```
 
+### Configuration
+Configure the application using environment variables:
 
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `8080` | TCP port for the HTTP server |
+| `DATABASE_PATH` | `./data/go-solve.db` | Local path for the SQLite database |
 
+---
 
-<!-- CONTRIBUTING -->
-## Contributing
+## 🧪 Testing
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+Always verify the full test suite before submitting pull requests:
+
+```sh
+# Run all tests across all packages
+go test -v ./...
+
+# Run tests with race detection
+go test -race ./...
+```
+
+---
+
+## 📁 Repository Layout
+
+```
+.
+├── db/              # Database connection, GORM auto-migrations, and seed catalog
+├── handlers/        # HTTP handlers, session extraction, and TemplateRegistry
+├── model/           # Data models (User, Task, Session, TaskProgress)
+├── security/        # Bcrypt password hashing and verification
+├── service/         # Domain business logic and ephemeral code execution runner
+├── static/          # Static assets (favicons, self-hosted Ace Editor bundle)
+├── tasks/           # Problem catalog test suites & reference solutions
+│   ├── easy/        # Easy problems (bubbles, find_maximum, hello_world, etc.)
+│   └── medium/      # Medium problems (word_count)
+├── templates/       # HTML templates (base layout, pages, and HTMX partials)
+├── Dockerfile       # Production container specification
+├── ISSUES.md        # Comprehensive revival assessment and issue tracker
+├── AGENTS.md        # Developer and AI agent operational guide
+└── main.go          # Server entrypoint and routing
+```
+
+---
+
+## 🗺️ Roadmap & Revival Status
+
+Consult [`ISSUES.md`](ISSUES.md) for the active backlog and priority matrix.
+
+- [x] **Phase 1: Stabilization & Fix CI** (Repaired test suite, reference solutions, runner timeout, AutoMigrate & seeder, untracked SQLite binary).
+- [x] **Phase 2: Concurrency & Sessions** (Cookie session management, eliminated global shared user state, task ID routing, starter code immutability).
+- [x] **Phase 4 (Partial): Template Registry & View Models** (Pre-parsed templates, decoupled view models, layout composition).
+- [ ] **Phase 3: Secure Runner Sandboxing** (Containerized execution with dropped capabilities / gVisor / nsjail to prevent arbitrary host RCE).
+- [ ] **Phase 4: Routing & Performance Polish** (Go 1.22+ mux routing patterns, Fly.io persistent volumes).
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please check out [`AGENTS.md`](AGENTS.md) and [`ISSUES.md`](ISSUES.md) before submitting pull requests.
 
 1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'feat: amazing feature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+2. Create your Feature Branch (`git checkout -b feat/amazing-feature`)
+3. Commit your Changes using Conventional Commits (`git commit -m 'feat: add amazing feature'`)
+4. Push to the Branch (`git push origin feat/amazing-feature`)
 5. Open a Pull Request
 
+---
 
-<!-- LICENSE -->
-## License
+## 📄 License
 
-Distributed under the GPL-3 License. See `LICENSE.txt` for more information.
-
-
-
-<!-- CONTACT -->
-## Contact
-
-Project Link: [https://github.com/Carter907/go-solve](https://github.com/Carter907/go-solve)
-
-
-
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
-
-* [Golang HTML template docs](https://pkg.go.dev/html/template)
-* [Go Web Examples](https://gowebexamples.com/)
-* [Go Docker Build Tutorial](https://docs.docker.com/guides/golang/build-images/)
-* [go-patterns](https://github.com/tmrts/go-patterns/blob/master/creational/singleton.md)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
-[product-screenshot]: images/screenshot.png
-[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
+Distributed under the GNU General Public License v3.0 (GPL-3.0). See [`LICENSE`](LICENSE) for more information.

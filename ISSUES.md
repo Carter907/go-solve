@@ -37,7 +37,7 @@ This document serves as the canonical issue catalog and revival roadmap to trans
 | **[WEB-03](#web-03-permanent-redirect-caching-on-logout)** | `P2` | Bug | Permanent Redirect (HTTP 301) Caching on Logout | Medium | **Resolved (Phase 2)** |
 | **[OPS-01](#ops-01-ephemeral-sqlite-storage-in-flyio-configuration)** | `P2` | DevOps | Ephemeral SQLite Storage in Fly.io Configuration | High | Open (Phase 4) |
 | **[UI-01](#ui-01-cdn-dependence-and-uncompiled-tailwind-usage)** | `P3` | Frontend | CDN Dependence and Uncompiled Tailwind Development Bundle | Low | Open (Phase 4) |
-| **[DOC-01](#doc-01-outdated-readme-and-placeholder-links)** | `P3` | Documentation| Outdated README and Placeholder Template Links | Low | Open (Phase 4) |
+| **[DOC-01](#doc-01-outdated-readme-and-placeholder-links)** | `P3` | Documentation| Outdated README and Placeholder Template Links | Low | **Resolved (Phase 4)** |
 
 ---
 
