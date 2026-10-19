@@ -3,6 +3,7 @@ package db
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,9 @@ import (
 var (
 	once sync.Once
 	Conn *gorm.DB
+
+	ErrNotFound      = errors.New("record not found")
+	ErrAlreadyExists = errors.New("record already exists")
 )
 
 // InitDB initializes a GORM SQLite connection with the provided database path.
@@ -79,49 +83,31 @@ func AutoMigrate(db *gorm.DB) error {
 	)
 }
 
-func GetUserByUsername(username string) (*model.User, *RowError) {
+func GetUserByUsername(username string) (*model.User, error) {
 	var user model.User
 	err := Conn.Where("username = ?", username).First(&user).Error
 	if err != nil {
-		return nil, &RowError{
-			Status:  RowNotFound,
-			Message: fmt.Sprintf("failed to find user with username %s", username),
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
 		}
+		return nil, fmt.Errorf("failed to find user with username %s: %w", username, err)
 	}
 
 	return &user, nil
-}
-
-const (
-	RowNotFound     = 1
-	RowNotUnique    = 2
-	RowColumnMisuse = 3
-)
-
-type RowStatus uint
-
-type RowError struct {
-	Status  RowStatus
-	Message string
-}
-
-func (r RowError) Error() string {
-	return r.Message
 }
 
 func InsertUser(username string, password string) (*model.User, error) {
 	var existing model.User
 	err := Conn.Where("username = ?", username).First(&existing).Error
 	if err == nil {
-		return nil, &RowError{
-			Status:  RowNotUnique,
-			Message: fmt.Sprintf("row error: user %s already exists", username),
-		}
+		return nil, ErrAlreadyExists
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
 
 	hashedPassword, err := security.HashPassword(password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	user := model.User{
@@ -130,88 +116,63 @@ func InsertUser(username string, password string) (*model.User, error) {
 	}
 
 	if err := Conn.Create(&user).Error; err != nil {
-		return nil, &InsertError{
-			Status:  InsertErr,
-			Message: fmt.Sprintf("insert error: %v", err),
-		}
+		return nil, fmt.Errorf("insert user failed: %w", err)
 	}
 
 	return &user, nil
 }
 
-const (
-	InsertErr = 1
-)
-
-type InsertStatus uint
-
-type InsertError struct {
-	Status  InsertStatus
-	Message string
-}
-
-func (r InsertError) Error() string {
-	return r.Message
-}
-
-func GetAllTasks() ([]model.Task, *RowError) {
+func GetAllTasks() ([]model.Task, error) {
 	var tasks []model.Task
 	result := Conn.Find(&tasks)
 	if result.Error != nil {
-		return nil, &RowError{
-			Status:  RowColumnMisuse,
-			Message: fmt.Sprintf("failed to find tasks: %v", result.Error),
-		}
+		return nil, fmt.Errorf("failed to find tasks: %w", result.Error)
 	}
 
 	return tasks, nil
 }
 
-func GetTaskByID(taskID uint) (*model.Task, *RowError) {
+func GetTaskByID(taskID uint) (*model.Task, error) {
 	var task model.Task
 	result := Conn.Where("id = ?", taskID).First(&task)
 	if result.Error != nil {
-		return nil, &RowError{
-			Status:  RowNotFound,
-			Message: fmt.Sprintf("failed to find task with ID %d: %v", taskID, result.Error),
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
 		}
+		return nil, fmt.Errorf("failed to find task with ID %d: %w", taskID, result.Error)
 	}
 
 	return &task, nil
 }
 
-func GetAllTaskProgresses() []model.TaskProgress {
+func GetAllTaskProgresses() ([]model.TaskProgress, error) {
 	var taskProgresses []model.TaskProgress
 	result := Conn.Find(&taskProgresses)
 	if result.Error != nil {
-		log.Printf("Failed to query task progresses: %v", result.Error)
-		return nil
+		return nil, fmt.Errorf("failed to query task progresses: %w", result.Error)
 	}
 
-	return taskProgresses
+	return taskProgresses, nil
 }
 
-func GetTaskProgressByUserID(userID uint) ([]model.TaskProgress, *RowError) {
+func GetTaskProgressByUserID(userID uint) ([]model.TaskProgress, error) {
 	var taskProgress []model.TaskProgress
 	result := Conn.Where("user_id = ?", userID).Find(&taskProgress)
 	if result.Error != nil {
-		return nil, &RowError{
-			Status:  RowColumnMisuse,
-			Message: fmt.Sprintf("failed to find task progress: %v", result.Error),
-		}
+		return nil, fmt.Errorf("failed to find task progress: %w", result.Error)
 	}
 
 	return taskProgress, nil
 }
 
-func GetTaskProgressByUserIDAndTaskID(userID uint, taskID uint) (*model.TaskProgress, *RowError) {
+func GetTaskProgressByUserIDAndTaskID(userID uint, taskID uint) (*model.TaskProgress, error) {
 	var taskProgress model.TaskProgress
 	result := Conn.Where("user_id = ? AND task_id = ?", userID, taskID).First(&taskProgress)
 	if result.Error != nil {
-		return nil, &RowError{
-			Status:  RowNotFound,
-			Message: fmt.Sprintf("failed to find task progress for user %d and task %d", userID, taskID),
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
 		}
+		return nil, fmt.Errorf("failed to find task progress for user %d and task %d: %w", userID, taskID, result.Error)
 	}
 
 	return &taskProgress, nil
@@ -226,37 +187,16 @@ func InsertTaskProgress(userID uint, taskID uint, progress string) (*model.TaskP
 
 	result := Conn.Create(&taskProgress)
 	if result.Error != nil {
-		return nil, &InsertError{
-			Status:  InsertErr,
-			Message: fmt.Sprintf("insert error: %v", result.Error),
-		}
+		return nil, fmt.Errorf("failed to insert task progress: %w", result.Error)
 	}
 
 	return &taskProgress, nil
 }
 
-const (
-	UpdateErr = 1
-)
-
-type UpdateStatus uint
-
-type UpdateError struct {
-	Status  UpdateStatus
-	Message string
-}
-
-func (r UpdateError) Error() string {
-	return r.Message
-}
-
 func UpdateTaskProgress(taskProgressID uint, progress string) error {
 	result := Conn.Model(&model.TaskProgress{}).Where("id = ?", taskProgressID).Update("progress", progress)
 	if result.Error != nil {
-		return &UpdateError{
-			Status:  UpdateErr,
-			Message: fmt.Sprintf("update error: %v", result.Error),
-		}
+		return fmt.Errorf("failed to update task progress: %w", result.Error)
 	}
 	return nil
 }
@@ -287,6 +227,9 @@ func GetSessionByToken(token string) (*model.Session, error) {
 	var session model.Session
 	err := Conn.Preload("User").Where("token = ? AND expires_at > ?", token, time.Now()).First(&session).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 

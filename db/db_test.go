@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -89,31 +90,30 @@ func TestUserCRUD(t *testing.T) {
 	}
 
 	// 2. Query user by username
-	fetchedUser, rowErr := GetUserByUsername(username)
-	if rowErr != nil {
-		t.Fatalf("GetUserByUsername failed: %v", rowErr)
+	fetchedUser, err := GetUserByUsername(username)
+	if err != nil {
+		t.Fatalf("GetUserByUsername failed: %v", err)
 	}
 	if fetchedUser.ID != user.ID {
 		t.Fatalf("expected user ID %d, got %d", user.ID, fetchedUser.ID)
 	}
 
-	// 3. Duplicate user insertion should fail with RowNotUnique
+	// 3. Duplicate user insertion should fail with ErrAlreadyExists
 	_, dupErr := InsertUser(username, "anotherpassword")
 	if dupErr == nil {
 		t.Fatalf("expected error on duplicate username, got nil")
 	}
-	rowError, ok := dupErr.(*RowError)
-	if !ok || rowError.Status != RowNotUnique {
-		t.Fatalf("expected RowError with RowNotUnique, got %v", dupErr)
+	if !errors.Is(dupErr, ErrAlreadyExists) {
+		t.Fatalf("expected ErrAlreadyExists, got %v", dupErr)
 	}
 
-	// 4. Non-existent user should fail with RowNotFound
+	// 4. Non-existent user should fail with ErrNotFound
 	_, notFoundErr := GetUserByUsername("non_existent_user_999")
 	if notFoundErr == nil {
 		t.Fatalf("expected error for non-existent user, got nil")
 	}
-	if notFoundErr.Status != RowNotFound {
-		t.Fatalf("expected RowNotFound status, got %d", notFoundErr.Status)
+	if !errors.Is(notFoundErr, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", notFoundErr)
 	}
 }
 
@@ -143,9 +143,9 @@ func TestTaskProgressCRUD(t *testing.T) {
 	}
 
 	// 2. Fetch by User ID and Task ID
-	fetched, rowErr := GetTaskProgressByUserIDAndTaskID(user.ID, taskID)
-	if rowErr != nil {
-		t.Fatalf("GetTaskProgressByUserIDAndTaskID failed: %v", rowErr)
+	fetched, err := GetTaskProgressByUserIDAndTaskID(user.ID, taskID)
+	if err != nil {
+		t.Fatalf("GetTaskProgressByUserIDAndTaskID failed: %v", err)
 	}
 	if fetched.ID != prog.ID {
 		t.Fatalf("expected progress ID %d, got %d", prog.ID, fetched.ID)
@@ -156,18 +156,18 @@ func TestTaskProgressCRUD(t *testing.T) {
 		t.Fatalf("UpdateTaskProgress failed: %v", err)
 	}
 
-	updated, rowErr := GetTaskProgressByUserIDAndTaskID(user.ID, taskID)
-	if rowErr != nil {
-		t.Fatalf("GetTaskProgressByUserIDAndTaskID after update failed: %v", rowErr)
+	updated, err := GetTaskProgressByUserIDAndTaskID(user.ID, taskID)
+	if err != nil {
+		t.Fatalf("GetTaskProgressByUserIDAndTaskID after update failed: %v", err)
 	}
 	if updated.Progress != "completed" {
 		t.Fatalf("expected updated progress 'completed', got %q", updated.Progress)
 	}
 
 	// 4. Query all progress for user
-	allProg, rowErr := GetTaskProgressByUserID(user.ID)
-	if rowErr != nil {
-		t.Fatalf("GetTaskProgressByUserID failed: %v", rowErr)
+	allProg, err := GetTaskProgressByUserID(user.ID)
+	if err != nil {
+		t.Fatalf("GetTaskProgressByUserID failed: %v", err)
 	}
 	if len(allProg) != 1 {
 		t.Fatalf("expected 1 progress record, got %d", len(allProg))
@@ -237,16 +237,16 @@ func TestGetTaskByID(t *testing.T) {
 		t.Fatalf("expected seeded tasks")
 	}
 
-	task, rowErr := GetTaskByID(tasks[0].ID)
-	if rowErr != nil {
-		t.Fatalf("GetTaskByID failed: %v", rowErr)
+	task, err := GetTaskByID(tasks[0].ID)
+	if err != nil {
+		t.Fatalf("GetTaskByID failed: %v", err)
 	}
 	if task.Title != tasks[0].Title {
 		t.Fatalf("expected title %q, got %q", tasks[0].Title, task.Title)
 	}
 
-	_, rowErr = GetTaskByID(99999)
-	if rowErr == nil || rowErr.Status != RowNotFound {
-		t.Fatalf("expected RowNotFound for non-existent task ID")
+	_, err = GetTaskByID(99999)
+	if err == nil || !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for non-existent task ID, got %v", err)
 	}
 }

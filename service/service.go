@@ -11,74 +11,38 @@ import (
 	"github.com/Carter907/go-solve/security"
 )
 
-func LoginUser(username, password string) (*model.User, *LoginError) {
+var (
+	ErrUsernameNotFound  = errors.New("username not found")
+	ErrPasswordIncorrect = errors.New("password is incorrect")
+	ErrUsernameTaken     = errors.New("username is taken")
+)
+
+func LoginUser(username, password string) (*model.User, error) {
 	userDB, err := db.GetUserByUsername(username)
 	if err != nil {
-		return nil, &LoginError{
-			Status:  UsernameNotFound,
-			Message: err.Message,
+		if errors.Is(err, db.ErrNotFound) {
+			return nil, ErrUsernameNotFound
 		}
+		return nil, fmt.Errorf("login failed: %w", err)
 	}
 
 	if !security.CheckPasswordHash(password, userDB.Password) {
-		return nil, &LoginError{
-			Status:  PasswordIncorrect,
-			Message: fmt.Sprintln("password is incorrect"),
-		}
+		return nil, ErrPasswordIncorrect
 	}
 	return userDB, nil
 }
 
-const (
-	PasswordIncorrect = 1
-	UsernameNotFound  = 2
-)
-
-type LoginStatus uint
-
-type LoginError struct {
-	Status  LoginStatus
-	Message string
-}
-
-func (t LoginError) Error() string {
-	return t.Message
-}
-
-func SignUpUser(username, password string) (*model.User, *SignUpError) {
+func SignUpUser(username, password string) (*model.User, error) {
 	userDB, err := db.InsertUser(username, password)
 	if err != nil {
-		var rowError *db.RowError
-		if errors.As(err, &rowError) && rowError.Status == db.RowNotUnique {
-			return nil, &SignUpError{
-				Status:  UsernameTaken,
-				Message: "username is taken",
-			}
-		} else {
-			log.Printf("Error signing up user: %v\n", err)
-			return nil, &SignUpError{
-				Status:  UsernameTaken,
-				Message: "failed to sign up",
-			}
+		if errors.Is(err, db.ErrAlreadyExists) {
+			return nil, ErrUsernameTaken
 		}
+		log.Printf("Error signing up user: %v\n", err)
+		return nil, fmt.Errorf("failed to sign up: %w", err)
 	}
 
 	return userDB, nil
-}
-
-const (
-	UsernameTaken = 1
-)
-
-type SignUpStatus uint
-
-type SignUpError struct {
-	Status  SignUpStatus
-	Message string
-}
-
-func (t SignUpError) Error() string {
-	return t.Message
 }
 
 func GetAllTaskProgress(userID uint) []model.TaskProgress {
@@ -94,10 +58,7 @@ func GetAllTaskProgress(userID uint) []model.TaskProgress {
 func GetTaskProgress(userID uint, taskID uint) *model.TaskProgress {
 	taskProgress, err := db.GetTaskProgressByUserIDAndTaskID(userID, taskID)
 	if err != nil {
-		switch err.Status {
-		case db.RowNotFound:
-			return nil
-		default:
+		if !errors.Is(err, db.ErrNotFound) {
 			log.Printf("failed to get task progress: %s\n", err.Error())
 		}
 		return nil

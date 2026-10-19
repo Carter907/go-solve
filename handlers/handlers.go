@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -394,7 +395,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, serr := service.SignUpUser(username, password)
-	if serr != nil && serr.Status == service.UsernameTaken {
+	if serr != nil && errors.Is(serr, service.ErrUsernameTaken) {
 		args.UsernameTaken = true
 	}
 	if !(args.UsernameTaken || args.PasswordsDontMatch) {
@@ -436,11 +437,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	userDB, err1 := service.LoginUser(username, password)
 	if err1 != nil {
-		switch err1.Status {
-		case service.PasswordIncorrect:
+		if errors.Is(err1, service.ErrPasswordIncorrect) {
 			args.PasswordIncorrect = true
-		case service.UsernameNotFound:
+		} else if errors.Is(err1, service.ErrUsernameNotFound) {
 			args.UsernameNotFound = true
+		} else {
+			log.Printf("Failed to login user: %v\n", err1)
 		}
 	} else if userDB != nil {
 		session, err := service.CreateSession(userDB.ID)
