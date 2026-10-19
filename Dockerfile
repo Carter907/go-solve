@@ -16,6 +16,9 @@ COPY . ./
 # Build
 RUN GOOS=linux go build -o /docker-go-solve
 
+# Pre-warm Go test runner cache so runtime executions are fast
+RUN GOTOOLCHAIN=local GOPROXY=off CGO_ENABLED=0 go test -vet=off ./tasks/easy/hello_world ./tasks/easy/bubbles
+
 # Optional:
 # To bind to a TCP port, runtime parameters must be supplied to the docker command.
 # But we can document in the Dockerfile what ports

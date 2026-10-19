@@ -80,8 +80,29 @@ func TestSolution(code string, taskPath string) (model.TaskResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "go", "test", "-v", ".")
+	cmd := exec.CommandContext(ctx, "go", "test", "-vet=off", "-v", ".")
 	cmd.Dir = tmpDir
+
+	env := []string{
+		"PATH=" + os.Getenv("PATH"),
+		"GOTOOLCHAIN=local",
+		"GOPROXY=off",
+		"CGO_ENABLED=0",
+	}
+	if home := os.Getenv("HOME"); home != "" {
+		env = append(env, "HOME="+home)
+	}
+	if gopath := os.Getenv("GOPATH"); gopath != "" {
+		env = append(env, "GOPATH="+gopath)
+	}
+	if gocache := os.Getenv("GOCACHE"); gocache != "" {
+		env = append(env, "GOCACHE="+gocache)
+	}
+	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
+		env = append(env, "TMPDIR="+tmpdir)
+	}
+	cmd.Env = env
+
 	out, err := cmd.CombinedOutput()
 	outputStr := string(out)
 
