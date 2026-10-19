@@ -29,7 +29,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", handlers.BaseHandler)
-	http.HandleFunc("/editor", handlers.EditorHandler)
+	http.HandleFunc("/problems/{id}", handlers.ProblemHandler)
 	http.HandleFunc("/run-code", handlers.RunCodeHandler)
 	http.HandleFunc("/signup", handlers.SignupHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)

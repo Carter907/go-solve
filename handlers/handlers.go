@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Carter907/go-solve/db"
@@ -25,37 +26,59 @@ func GetUserFromRequest(r *http.Request) *model.User {
 	return service.GetUserBySessionToken(cookie.Value)
 }
 
+var funcMap = template.FuncMap{
+	"dict": func(values ...interface{}) (map[string]interface{}, error) {
+		if len(values)%2 != 0 {
+			return nil, fmt.Errorf("invalid dict call")
+		}
+		dict := make(map[string]interface{}, len(values)/2)
+		for i := 0; i < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				return nil, fmt.Errorf("dict keys must be strings")
+			}
+			dict[key] = values[i+1]
+		}
+		return dict, nil
+	},
+}
+
+type TaskData struct {
+	Task         model.Task
+	TaskProgress string
+}
+
+type CategoryGroup struct {
+	Name             string
+	Description      string
+	TotalCount       int
+	CompletedCount   int
+	PercentCompleted int
+	Tasks            []TaskData
+}
+
+type EditorData struct {
+	model.Task
+	PrevTaskID uint
+	NextTaskID uint
+}
+
+type BaseArgs struct {
+	Path             string
+	Categories       []CategoryGroup
+	TaskData         []TaskData
+	EditorData       EditorData
+	TotalTasks       int
+	CompletedTasks   int
+	PercentCompleted int
+	User             *model.User
+}
+
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path[1:]
 	user := GetUserFromRequest(r)
 	if user == nil {
 		user = &model.User{}
-	}
-
-	funcMap := template.FuncMap{
-		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("invalid dict call")
-			}
-			dict := make(map[string]interface{}, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					return nil, fmt.Errorf("dict keys must be strings")
-				}
-				dict[key] = values[i+1]
-			}
-			return dict, nil
-		},
-	}
-	type TaskData struct {
-		Task         model.Task
-		TaskProgress string
-	}
-	type BaseArgs struct {
-		Path     string
-		TaskData []TaskData
-		User     *model.User
 	}
 	var tmpl *template.Template
 
@@ -79,79 +102,184 @@ func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	tasks := service.GetAllTasks()
 	taskDataSlice := make([]TaskData, 0, len(tasks))
 
+	progressMap := make(map[uint]string)
+	if len(user.Username) >= 1 && user.ID > 0 {
+		taskProgresses := service.GetAllTaskProgress(user.ID)
+		for _, prog := range taskProgresses {
+			progressMap[prog.TaskID] = prog.Progress
+		}
+	}
+
+	categoryDescriptions := map[string]string{
+		"Basics":           "Core syntax, basic types, return values, and arithmetic.",
+		"Strings":          "UTF-8 manipulation, string traversal, and runes.",
+		"Slices & Sorting": "Dynamic slices, sorting algorithms, and element searches.",
+		"Maps & Structs":   "Key-value collections, structures, and frequency maps.",
+	}
+	categoryOrder := []string{"Basics", "Strings", "Slices & Sorting", "Maps & Structs"}
+
+	categoryMap := make(map[string][]TaskData)
+	totalCompleted := 0
+
 	for _, task := range tasks {
 		taskProgress := ""
-
 		if len(user.Username) >= 1 && user.ID > 0 {
 			taskProgress = "not started"
-			taskProgresses := service.GetAllTaskProgress(user.ID)
-			for _, taskProg := range taskProgresses {
-				if task.ID == taskProg.TaskID {
-					taskProgress = taskProg.Progress
-					break
-				}
+			if p, ok := progressMap[task.ID]; ok {
+				taskProgress = p
 			}
 		}
 
-		taskData := TaskData{
+		if taskProgress == "completed" {
+			totalCompleted++
+		}
+
+		cat := task.Category
+		if cat == "" {
+			cat = "Basics"
+		}
+
+		td := TaskData{
 			Task:         task,
 			TaskProgress: taskProgress,
 		}
+		taskDataSlice = append(taskDataSlice, td)
+		categoryMap[cat] = append(categoryMap[cat], td)
+	}
 
-		taskDataSlice = append(taskDataSlice, taskData)
+	var categories []CategoryGroup
+	seen := make(map[string]bool)
+
+	for _, name := range categoryOrder {
+		if tasksInCat, ok := categoryMap[name]; ok {
+			completedInCat := 0
+			for _, td := range tasksInCat {
+				if td.TaskProgress == "completed" {
+					completedInCat++
+				}
+			}
+			percent := 0
+			if len(tasksInCat) > 0 {
+				percent = (completedInCat * 100) / len(tasksInCat)
+			}
+			desc := categoryDescriptions[name]
+			if desc == "" {
+				desc = "Practice exercises for " + name
+			}
+			categories = append(categories, CategoryGroup{
+				Name:             name,
+				Description:      desc,
+				TotalCount:       len(tasksInCat),
+				CompletedCount:   completedInCat,
+				PercentCompleted: percent,
+				Tasks:            tasksInCat,
+			})
+			seen[name] = true
+		}
+	}
+
+	for name, tasksInCat := range categoryMap {
+		if !seen[name] {
+			completedInCat := 0
+			for _, td := range tasksInCat {
+				if td.TaskProgress == "completed" {
+					completedInCat++
+				}
+			}
+			percent := 0
+			if len(tasksInCat) > 0 {
+				percent = (completedInCat * 100) / len(tasksInCat)
+			}
+			categories = append(categories, CategoryGroup{
+				Name:             name,
+				Description:      "Practice exercises for " + name,
+				TotalCount:       len(tasksInCat),
+				CompletedCount:   completedInCat,
+				PercentCompleted: percent,
+				Tasks:            tasksInCat,
+			})
+		}
+	}
+
+	overallPercent := 0
+	if len(tasks) > 0 {
+		overallPercent = (totalCompleted * 100) / len(tasks)
 	}
 
 	err := tmpl.Execute(w, BaseArgs{
-		Path:     path,
-		TaskData: taskDataSlice,
-		User:     user,
+		Path:             path,
+		Categories:       categories,
+		TaskData:         taskDataSlice,
+		TotalTasks:       len(tasks),
+		CompletedTasks:   totalCompleted,
+		PercentCompleted: overallPercent,
+		User:             user,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func EditorHandler(w http.ResponseWriter, r *http.Request) {
-	var task *model.Task
-
-	// Check if taskID is provided (preferred)
-	taskIDStr := r.FormValue("taskID")
-	if taskIDStr != "" {
-		id, err := strconv.Atoi(taskIDStr)
-		if err == nil {
-			t, err := service.GetTaskByID(uint(id))
-			if err == nil {
-				task = t
-			}
+func ProblemHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		idStr = r.URL.Query().Get("id")
+	}
+	if idStr == "" {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) >= 2 && parts[0] == "problems" {
+			idStr = parts[1]
 		}
 	}
 
-	// Fallback to taskIndex for backwards compatibility
-	if task == nil {
-		taskIndexStr := r.FormValue("taskIndex")
-		if taskIndexStr != "" {
-			index, err := strconv.Atoi(taskIndexStr)
-			if err == nil {
-				tasks := service.GetAllTasks()
-				if index >= 0 && index < len(tasks) {
-					task = &tasks[index]
-				}
-			}
-		}
-	}
-
-	if task == nil {
-		http.Error(w, "Task not found", http.StatusNotFound)
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		http.NotFound(w, r)
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/editor.html")
+	task, err := service.GetTaskByID(uint(id))
+	if err != nil || task == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	allTasks := service.GetAllTasks()
+	var prevTaskID, nextTaskID uint
+	for i, t := range allTasks {
+		if t.ID == task.ID {
+			if i > 0 {
+				prevTaskID = allTasks[i-1].ID
+			}
+			if i < len(allTasks)-1 {
+				nextTaskID = allTasks[i+1].ID
+			}
+			break
+		}
+	}
+
+	user := GetUserFromRequest(r)
+	if user == nil {
+		user = &model.User{}
+	}
+
+	editorData := EditorData{
+		Task:       *task,
+		PrevTaskID: prevTaskID,
+		NextTaskID: nextTaskID,
+	}
+
+	tmpl, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.ExecuteTemplate(w, "editor", task)
+	err = tmpl.Execute(w, BaseArgs{
+		Path:       "editor",
+		EditorData: editorData,
+		User:       user,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -330,7 +458,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 			Expires:  session.ExpiresAt,
 		})
-		w.Header().Set("HX-Refresh", "true")
+		w.Header().Set("HX-Redirect", "/")
 	}
 
 	tmpl, err := template.ParseFiles("templates/login-form.html")

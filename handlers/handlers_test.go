@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -121,38 +124,32 @@ func TestMultiUserSessionIsolation(t *testing.T) {
 	}
 }
 
-func TestEditorHandler_TaskID_And_TaskIndex(t *testing.T) {
+func TestProblemHandler_Routing(t *testing.T) {
 	tasks := service.GetAllTasks()
 	if len(tasks) == 0 {
 		t.Fatalf("no tasks seeded")
 	}
 	firstTask := tasks[0]
 
-	// 1. Test by taskID
-	reqID, _ := http.NewRequest("GET", "http://localhost:8080/editor?taskID=1", nil)
+	// 1. Test by problem path
+	reqID, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080/problems/%d", firstTask.ID), nil)
+	reqID.SetPathValue("id", strconv.Itoa(int(firstTask.ID)))
 	resID := httptest.NewRecorder()
-	EditorHandler(resID, reqID)
+	ProblemHandler(resID, reqID)
 	if resID.Code != http.StatusOK {
-		t.Fatalf("expected status 200 for taskID, got %d", resID.Code)
+		t.Fatalf("expected status 200 for problem path, got %d", resID.Code)
+	}
+	if !strings.Contains(resID.Body.String(), firstTask.Title) {
+		t.Fatalf("expected problem page to contain title %q, got: %s", firstTask.Title, resID.Body.String())
 	}
 
-	// 2. Test by taskIndex
-	reqIndex, _ := http.NewRequest("GET", "http://localhost:8080/editor?taskIndex=0", nil)
-	resIndex := httptest.NewRecorder()
-	EditorHandler(resIndex, reqIndex)
-	if resIndex.Code != http.StatusOK {
-		t.Fatalf("expected status 200 for taskIndex, got %d", resIndex.Code)
-	}
-	if !strings.Contains(resIndex.Body.String(), firstTask.Title) {
-		t.Fatalf("expected editor body to contain %q, got: %s", firstTask.Title, resIndex.Body.String())
-	}
-
-	// 3. Test non-existent task
-	reqBad, _ := http.NewRequest("GET", "http://localhost:8080/editor?taskID=99999", nil)
+	// 2. Test non-existent problem
+	reqBad, _ := http.NewRequest("GET", "http://localhost:8080/problems/99999", nil)
+	reqBad.SetPathValue("id", "99999")
 	resBad := httptest.NewRecorder()
-	EditorHandler(resBad, reqBad)
+	ProblemHandler(resBad, reqBad)
 	if resBad.Code != http.StatusNotFound {
-		t.Fatalf("expected 404 for invalid task, got %d", resBad.Code)
+		t.Fatalf("expected 404 for invalid problem, got %d", resBad.Code)
 	}
 }
 
@@ -229,3 +226,72 @@ func TestLogoutHandler(t *testing.T) {
 		t.Fatalf("expected session_token cookie to be expired with negative MaxAge")
 	}
 }
+
+func TestBaseHandler_CategoriesAndProgress(t *testing.T) {
+	req, _ := http.NewRequest("GET", "http://localhost:8080/", nil)
+	res := httptest.NewRecorder()
+	BaseHandler(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", res.Code)
+	}
+
+	body := html.UnescapeString(res.Body.String())
+	categories := []string{"Basics", "Strings", "Slices & Sorting", "Maps & Structs"}
+	for _, cat := range categories {
+		if !strings.Contains(body, cat) {
+			t.Errorf("expected body to contain category %q, got: %s", cat, body)
+		}
+	}
+
+	// Verify toolbar controls
+	if !strings.Contains(body, "problem-search") {
+		t.Errorf("expected body to contain problem-search input")
+	}
+	if !strings.Contains(body, "difficulty-filters") {
+		t.Errorf("expected body to contain difficulty-filters toolbar")
+	}
+}
+
+func TestProblemHandler_BreadcrumbsAndNavigation(t *testing.T) {
+	tasks := service.GetAllTasks()
+	if len(tasks) < 2 {
+		t.Fatalf("expected at least 2 tasks to test navigation, got %d", len(tasks))
+	}
+
+	// Request second task so it has both Prev and Next links
+	secondTask := tasks[1]
+	req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8080/problems/%d", secondTask.ID), nil)
+	req.SetPathValue("id", strconv.Itoa(int(secondTask.ID)))
+	res := httptest.NewRecorder()
+	ProblemHandler(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", res.Code)
+	}
+
+	body := res.Body.String()
+	if !strings.Contains(body, "Back to Problems") {
+		t.Errorf("expected editor body to contain 'Back to Problems' breadcrumb link")
+	}
+	if !strings.Contains(body, secondTask.Title) {
+		t.Errorf("expected editor body to contain task title %q", secondTask.Title)
+	}
+	if !strings.Contains(body, secondTask.Category) {
+		t.Errorf("expected editor body to contain task category %q", secondTask.Category)
+	}
+	if !strings.Contains(body, "Prev") {
+		t.Errorf("expected editor body to contain 'Prev' button")
+	}
+	if !strings.Contains(body, "Next") {
+		t.Errorf("expected editor body to contain 'Next' button")
+	}
+	// Verify self-hosted Ace assets are linked
+	if !strings.Contains(body, "/static/ace/ace.js") {
+		t.Errorf("expected problem page to link to local /static/ace/ace.js")
+	}
+	if !strings.Contains(body, "/static/ace/mode-golang.js") {
+		t.Errorf("expected problem page to link to local /static/ace/mode-golang.js")
+	}
+}
+
