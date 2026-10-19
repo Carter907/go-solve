@@ -47,8 +47,8 @@ func TestAutoMigrateAndSeed(t *testing.T) {
 		t.Fatalf("GetAllTasks failed: %v", err)
 	}
 
-	if len(tasks) != 2 {
-		t.Fatalf("expected 2 tasks after seed, got %d", len(tasks))
+	if len(tasks) != 7 {
+		t.Fatalf("expected 7 tasks after seed, got %d", len(tasks))
 	}
 
 	// Idempotency check: running seed again should not duplicate tasks
@@ -61,8 +61,8 @@ func TestAutoMigrateAndSeed(t *testing.T) {
 		t.Fatalf("GetAllTasks failed: %v", err)
 	}
 
-	if len(tasksAfter) != 2 {
-		t.Fatalf("expected still 2 tasks after re-seed, got %d", len(tasksAfter))
+	if len(tasksAfter) != 7 {
+		t.Fatalf("expected still 7 tasks after re-seed, got %d", len(tasksAfter))
 	}
 }
 

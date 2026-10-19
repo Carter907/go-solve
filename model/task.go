@@ -10,6 +10,7 @@ type Task struct {
 	Title       string `gorm:"not null" json:"title"`
 	Description string `gorm:"not null" json:"description"`
 	Difficulty  string `gorm:"not null" json:"difficulty"`
+	Category    string `gorm:"not null;default:'Basics';index" json:"category"`
 	Code        string `gorm:"not null" json:"code"`
 	Objective   string `gorm:"not null" json:"objective"`
 }
