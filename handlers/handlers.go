@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -27,23 +26,6 @@ func GetUserFromRequest(r *http.Request) *model.User {
 	return service.GetUserBySessionToken(cookie.Value)
 }
 
-var funcMap = template.FuncMap{
-	"dict": func(values ...interface{}) (map[string]interface{}, error) {
-		if len(values)%2 != 0 {
-			return nil, fmt.Errorf("invalid dict call")
-		}
-		dict := make(map[string]interface{}, len(values)/2)
-		for i := 0; i < len(values); i += 2 {
-			key, ok := values[i].(string)
-			if !ok {
-				return nil, fmt.Errorf("dict keys must be strings")
-			}
-			dict[key] = values[i+1]
-		}
-		return dict, nil
-	},
-}
-
 type TaskData struct {
 	Task         model.Task
 	TaskProgress string
@@ -58,46 +40,9 @@ type CategoryGroup struct {
 	Tasks            []TaskData
 }
 
-type EditorData struct {
-	model.Task
-	PrevTaskID uint
-	NextTaskID uint
-}
-
-type BaseArgs struct {
-	Path             string
-	Categories       []CategoryGroup
-	TaskData         []TaskData
-	EditorData       EditorData
-	TotalTasks       int
-	CompletedTasks   int
-	PercentCompleted int
-	User             *model.User
-}
-
-func BaseHandler(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path[1:]
-	user := GetUserFromRequest(r)
+func buildHomeViewData(user *model.User) HomeViewData {
 	if user == nil {
 		user = &model.User{}
-	}
-	var tmpl *template.Template
-
-	switch path {
-	case "signup-form":
-		t, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tmpl = t
-	default:
-		t, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tmpl = t
 	}
 
 	tasks := service.GetAllTasks()
@@ -207,17 +152,34 @@ func BaseHandler(w http.ResponseWriter, r *http.Request) {
 		overallPercent = (totalCompleted * 100) / len(tasks)
 	}
 
-	err := tmpl.Execute(w, BaseArgs{
-		Path:             path,
+	return HomeViewData{
+		User:             user,
 		Categories:       categories,
-		TaskData:         taskDataSlice,
 		TotalTasks:       len(tasks),
 		CompletedTasks:   totalCompleted,
 		PercentCompleted: overallPercent,
-		User:             user,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func BaseHandler(w http.ResponseWriter, r *http.Request) {
+	path := strings.Trim(r.URL.Path, "/")
+	user := GetUserFromRequest(r)
+	if user == nil {
+		user = &model.User{}
+	}
+
+	if path == "signup-form" {
+		if err := GetTemplates().RenderSignupPage(w, SignupPageViewData{User: user}); err != nil {
+			log.Printf("Failed to render signup page: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	data := buildHomeViewData(user)
+	if err := GetTemplates().RenderHome(w, data); err != nil {
+		log.Printf("Failed to render home page: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -264,25 +226,16 @@ func ProblemHandler(w http.ResponseWriter, r *http.Request) {
 		user = &model.User{}
 	}
 
-	editorData := EditorData{
+	data := EditorViewData{
+		User:       user,
 		Task:       *task,
 		PrevTaskID: prevTaskID,
 		NextTaskID: nextTaskID,
 	}
 
-	tmpl, err := template.New("base").Funcs(funcMap).ParseGlob("templates/*.html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.Execute(w, BaseArgs{
-		Path:       "editor",
-		EditorData: editorData,
-		User:       user,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := GetTemplates().RenderEditor(w, data); err != nil {
+		log.Printf("Failed to render editor: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -382,13 +335,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirm-password")
 
-	type SignUpArgs struct {
-		UsernameTaken      bool
-		PasswordsDontMatch bool
-		SignUpSuccess      bool
-	}
-
-	args := SignUpArgs{
+	args := SignupFormData{
 		UsernameTaken:      false,
 		PasswordsDontMatch: password != confirmPassword,
 		SignUpSuccess:      false,
@@ -402,15 +349,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		args.SignUpSuccess = true
 	}
 
-	tmpl, err := template.ParseFiles("templates/signup-form.html")
-	if err != nil {
-		log.Printf("Failed to parse signup template: %v\n", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, "signup-form", args)
-	if err != nil {
+	if err := GetTemplates().RenderSignupForm(w, args); err != nil {
 		log.Printf("Failed to execute signup template: %v\n", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -426,11 +365,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	type LoginArgs struct {
-		UsernameNotFound  bool
-		PasswordIncorrect bool
-	}
-	args := LoginArgs{
+	args := LoginFormData{
 		UsernameNotFound:  false,
 		PasswordIncorrect: false,
 	}
@@ -463,15 +398,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("HX-Redirect", "/")
 	}
 
-	tmpl, err := template.ParseFiles("templates/login-form.html")
-	if err != nil {
-		log.Printf("Failed to parse login template: %v\n", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, "login-form", args)
-	if err != nil {
+	if err := GetTemplates().RenderLoginForm(w, args); err != nil {
 		log.Printf("Failed to execute login template: %v\n", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return

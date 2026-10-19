@@ -27,6 +27,9 @@ func main() {
 	if err := db.SeedTasks(database); err != nil {
 		log.Fatalf("Failed to seed tasks: %v", err)
 	}
+	if err := handlers.InitTemplates(); err != nil {
+		log.Fatalf("Failed to initialize templates: %v", err)
+	}
 
 	http.HandleFunc("/", handlers.BaseHandler)
 	http.HandleFunc("/problems/{id}", handlers.ProblemHandler)

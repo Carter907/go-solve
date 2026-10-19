@@ -27,12 +27,7 @@
 
     {{ template "header" . }}
 
-    {{ if eq .Path "signup-form"}}
-        {{ template "signup-form" }}
-    {{ else if eq .Path "editor" }}
-        {{ template "editor" .EditorData }}
-    {{ else if eq .Path "" }}
-        {{ template "task-list" . }}
+    {{ block "content" . }}
     {{ end }}
 
     </body>

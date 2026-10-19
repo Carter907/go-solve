@@ -32,7 +32,7 @@ This document serves as the canonical issue catalog and revival roadmap to trans
 | **[DB-01](#db-01-tracked-sqlite-binary-with-personal-data)** | `P1` | Database | Tracked SQLite Database Binary with Developer Data | Medium | **Resolved (Phase 1)** |
 | **[DB-02](#db-02-missing-schema-migrations-and-data-seeder)** | `P1` | Database | Missing Schema Migrations and Automated Data Seeding | High | **Resolved (Phase 1)** |
 | **[DB-03](#db-03-hardcoded-database-path-and-missing-constraints)** | `P1` | Database | Hardcoded Relative DB Path and Missing Unique Constraints | Medium | **Resolved (Phase 1)** |
-| **[WEB-01](#web-01-template-re-parsing-on-every-http-request)** | `P2` | Performance | Template Re-Parsing on Every HTTP Request | Medium | Open (Phase 4) |
+| **[WEB-01](#web-01-template-re-parsing-on-every-http-request)** | `P2` | Performance | Template Re-Parsing on Every HTTP Request | Medium | **Resolved (Phase 4)** |
 | **[WEB-02](#web-02-brittle-manual-routing-and-index-based-task-lookup)** | `P2` | Architecture | Brittle Manual Routing and Index-Based Task Lookup | Medium | Open (Phase 4) |
 | **[WEB-03](#web-03-permanent-redirect-caching-on-logout)** | `P2` | Bug | Permanent Redirect (HTTP 301) Caching on Logout | Medium | **Resolved (Phase 2)** |
 | **[OPS-01](#ops-01-ephemeral-sqlite-storage-in-flyio-configuration)** | `P2` | DevOps | Ephemeral SQLite Storage in Fly.io Configuration | High | Open (Phase 4) |
