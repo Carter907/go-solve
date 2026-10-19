@@ -1,55 +1,43 @@
 {{ define "task" }}
+    <a href="/problems/{{ .TaskData.Task.ID }}"
+       class="task-item group flex items-center justify-between px-4 py-3.5 hover:bg-neutral-800/80 transition duration-150 cursor-pointer border-b border-neutral-700/60 last:border-b-0"
+       data-title="{{ .TaskData.Task.Title }}"
+       data-category="{{ .TaskData.Task.Category }}"
+       data-difficulty="{{ .TaskData.Task.Difficulty }}"
+       data-progress="{{ .TaskData.TaskProgress }}">
 
-    <a class="cursor-pointer" hx-get="/editor"
-       hx-vals='{ "taskID": "{{ .TaskData.Task.ID }}", "taskIndex": "{{ .Index }}" }'
-       hx-swap="outerHTML" hx-target="#task-list">
+        <!-- Left: Title & Difficulty Text (No icons) -->
+        <div class="flex items-center gap-4 min-w-0">
+            <span class="text-sm font-medium text-neutral-200 group-hover:text-white transition truncate">
+                {{ .TaskData.Task.Title }}
+            </span>
 
+            {{ if eq .TaskData.Task.Difficulty "easy" }}
+                <span class="text-xs text-neutral-400 font-medium">
+                    Easy
+                </span>
+            {{ else if eq .TaskData.Task.Difficulty "medium" }}
+                <span class="text-xs text-neutral-400 font-medium">
+                    Medium
+                </span>
+            {{ else if eq .TaskData.Task.Difficulty "hard" }}
+                <span class="text-xs text-neutral-400 font-medium">
+                    Hard
+                </span>
+            {{ end }}
+        </div>
 
-        {{ with .TaskData }}
-
-            <div class="hover:border-neutral-700 border-neutral-800 border bg-neutral-900
-            rounded-full p-10
-            w-min-max
-            flex
-            flex-row
-            justify-end">
-
-                <div class="flex-grow">
-                    {{ with .Task }}
-                        <span class="text-2xl">{{ .Title }}</span>
-                        <span class="font-light opacity-50 px-5 uppercase"> {{
-                            .Difficulty
-                            }}</span>
-                        <p class="font-light opacity-50">
-                            {{ .Description }}
-                        </p>
-                    {{ end }}
-                </div>
-
-                {{ with .TaskProgress }}
-                    {{ if eq . "completed" }}
-                        <div class="self-center border px-2 py-1 border-green-300 bg-green-500 bg-opacity-20
-                rounded-full
-                font-normal">
-                            completed
-                        </div>
-                    {{ else if eq . "in progress" }}
-                        <div class="self-center border px-2 py-1 border-yellow-300 bg-yellow-500
-                bg-opacity-20
-                rounded-full
-                font-normal">
-                            in progress
-                        </div>
-                    {{ else if eq . "not started" }}
-                        <div class="self-center border px-2 py-1 border-red-300 bg-red-500 bg-opacity-20
-                rounded-full
-                font-normal">
-                            not started
-                        </div>
-
-                    {{ end }}
-                {{ end }}
-            </div>
-        {{ end }}
+        <!-- Right: Status Text (No icons) -->
+        <div class="flex items-center pl-3 flex-shrink-0">
+            {{ if eq .TaskData.TaskProgress "completed" }}
+                <span class="text-xs text-emerald-400 font-medium">
+                    Solved
+                </span>
+            {{ else if eq .TaskData.TaskProgress "in progress" }}
+                <span class="text-xs text-amber-400 font-medium">
+                    In Progress
+                </span>
+            {{ end }}
+        </div>
     </a>
-{{end}}
+{{ end }}

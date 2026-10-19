@@ -1,48 +1,100 @@
-{{define "editor" }}
-<section class="flex flex-row justify-center items-center h-full gap-2">
-  <section class="flex flex-col h-full basis-2/3 gap-4">
-    <section
-      class="basis-1/6 bg-neutral-900 opacity-70 p-2 rounded flex flex-row"
-    >
-      <div class="flex-grow">
-        <p class="text-2xl dark:text-white">Task: {{ .Title }}</p>
-        <p id="problem" class="dark:text-white">{{ .Objective }}</p>
+{{ define "editor" }}
+<main id="editor-container" class="w-11/12 max-w-5xl mx-auto py-5 flex-grow flex flex-col gap-4 min-h-[calc(100vh-80px)]">
+  <!-- Breadcrumb & Navigation Bar (No icons) -->
+  <nav class="flex flex-row items-center justify-between bg-neutral-900 border border-neutral-700/80 rounded-xl px-4 py-2.5 shadow-sm flex-shrink-0">
+    <div class="flex items-center gap-2.5 text-xs sm:text-sm flex-wrap">
+      <a href="/" class="text-neutral-400 hover:text-white transition font-medium">
+        Back to Problems
+      </a>
+      <span class="text-neutral-600">/</span>
+      <span class="text-neutral-400">{{ .Category }}</span>
+      <span class="text-neutral-600">/</span>
+      <span class="text-white font-semibold">{{ .Title }}</span>
+
+      {{ if eq .Difficulty "easy" }}
+        <span class="text-xs text-neutral-400 pl-1">
+          Easy
+        </span>
+      {{ else if eq .Difficulty "medium" }}
+        <span class="text-xs text-neutral-400 pl-1">
+          Medium
+        </span>
+      {{ else if eq .Difficulty "hard" }}
+        <span class="text-xs text-neutral-400 pl-1">
+          Hard
+        </span>
+      {{ end }}
+    </div>
+
+    <!-- Prev / Next Problem Shortcuts (No icons) -->
+    <div class="flex items-center gap-2 flex-shrink-0">
+      {{ if .PrevTaskID }}
+        <a href="/problems/{{ .PrevTaskID }}"
+           class="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 transition cursor-pointer">
+          Prev
+        </a>
+      {{ end }}
+      {{ if .NextTaskID }}
+        <a href="/problems/{{ .NextTaskID }}"
+           class="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 transition cursor-pointer">
+          Next
+        </a>
+      {{ end }}
+    </div>
+  </nav>
+
+  <!-- Problem Objective + Editor & Console -->
+  <section class="flex flex-col md:flex-row items-stretch flex-grow gap-4 min-h-[450px]">
+    <section class="flex flex-col flex-grow basis-2/3 gap-3 min-h-[450px]">
+      <div class="bg-neutral-900 border border-neutral-700/80 p-4 rounded-xl shadow-sm flex-shrink-0">
+        <h2 class="text-base sm:text-lg font-bold text-white">{{ .Title }}</h2>
+        <p id="problem" class="text-sm text-neutral-300 mt-1 leading-relaxed">{{ .Objective }}</p>
       </div>
-    </section>
 
-    <section
-      id="editor"
-      class="border border-neutral-600 shadow-md rounded grow"
-    >{{ .Code }}</section>
-    <script>
-      const editor = ace.edit("editor");
-      editor.setTheme("ace/theme/gruvbox");
-      editor.session.setMode("ace/mode/golang");
-      editor.setOption("fontSize", "20px");
-    </script>
+      <!-- Ace Editor Container -->
+      <div
+        id="editor"
+        class="relative w-full border border-neutral-700/80 rounded-xl shadow-sm flex-grow min-h-[350px]"
+        style="position: relative; width: 100%; height: 100%; min-height: 350px;"
+      >{{ .Code }}</div>
 
-    <form
-      hx-target="#console"
-      hx-vals="js:{editorContent: editor.getValue(), taskID: '{{ .ID }}'}"
-      hx-post="/run-code"
-      hx-swap="textContent"
-    >
-      <section class="flex flex-col">
+      <script>
+        (function() {
+          var editor = ace.edit("editor");
+          editor.setTheme("ace/theme/gruvbox");
+          editor.session.setMode("ace/mode/golang");
+          editor.session.setOption("useWorker", false);
+          editor.setOption("fontSize", "15px");
+          window.editor = editor;
+        })();
+      </script>
+
+      <form
+        hx-target="#console"
+        hx-vals="js:{editorContent: (window.editor ? window.editor.getValue() : ''), taskID: '{{ .ID }}'}"
+        hx-post="/run-code"
+        hx-swap="textContent"
+        class="flex justify-end flex-shrink-0"
+      >
         <button
           type="submit"
-          class="self-end dark:text-white shadow-md hover:bg-neutral-800 border border-neutral-300 rounded p-2 border:neutral-400"
+          class="text-xs sm:text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-600 px-5 py-2 rounded-lg shadow-sm transition duration-150 cursor-pointer"
         >
-          run code
+          Run Code
         </button>
-      </section>
-    </form>
+      </form>
+    </section>
+
+    <!-- Console Output -->
+    <div class="basis-1/3 flex flex-col gap-2 min-h-0">
+      <label for="console" class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Execution Output</label>
+      <textarea
+        id="console"
+        placeholder="$ Click 'Run Code' to compile and test solution..."
+        readonly
+        class="font-mono text-xs sm:text-sm text-neutral-200 p-4 border border-neutral-700/80 bg-neutral-900 shadow-sm rounded-xl flex-grow resize-none focus:outline-none"
+      ></textarea>
+    </div>
   </section>
-  <label for="console"></label>
-  <textarea
-    id="console"
-    placeholder="$"
-    readonly
-    class="text-white p-5 border border-neutral-600 bg-neutral-900 shadow-md rounded basis-1/3 h-full resize-none"
-  ></textarea>
-</section>
+</main>
 {{ end }}

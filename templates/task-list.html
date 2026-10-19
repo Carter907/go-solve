@@ -1,19 +1,187 @@
 {{ define "task-list" }}
-    <main class="flex-grow w-2/3 m-auto py-20 dark:text-neutral-300">
-        <section id="task-list" class="flex flex-col gap-10">
-            <div>
-                <p class="text-4xl text-center">
-                    Go Solve These!
-                </p>
+    <main class="flex-grow w-11/12 max-w-5xl mx-auto py-8 text-neutral-200">
+        <section id="task-list" class="flex flex-col gap-6">
+            <!-- Hero Header & Progress -->
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-neutral-700/80">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                        Go Practice Problems
+                    </h1>
+                    <p class="text-neutral-400 mt-1 text-sm">
+                        Master Go programming with focused algorithmic and language exercises.
+                    </p>
+                </div>
+
+                <!-- User Progress Metric -->
+                {{ if and .User (ge (len .User.Username) 1) }}
+                <div class="flex flex-col sm:items-end bg-neutral-900 border border-neutral-700/80 rounded-xl px-4 py-2.5 min-w-[200px]">
+                    <div class="flex items-center justify-between sm:justify-end gap-2 text-xs font-medium text-neutral-300 w-full">
+                        <span class="text-neutral-400">Total Solved:</span>
+                        <span class="text-white font-semibold">{{ .CompletedTasks }} / {{ .TotalTasks }}</span>
+                        <span class="text-neutral-500">({{ .PercentCompleted }}%)</span>
+                    </div>
+                    <div class="w-full sm:w-44 bg-neutral-800 rounded-full h-1.5 mt-2 overflow-hidden border border-neutral-700/60">
+                        <div class="bg-neutral-300 h-1.5 rounded-full transition-all duration-500"
+                             style="width: {{ .PercentCompleted }}%;">
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
             </div>
 
-            <ul class="font-bold">
-                {{ range $index, $value := . }}
-                    <li class="mt-5">
-                        {{ template "task" dict "Index" $index "TaskData" $value }}
-                    </li>
+            <!-- Toolbar Controls: Search, Difficulty Pills, Hide Completed (No icons) -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <!-- Search Input -->
+                <div class="w-full sm:w-72">
+                    <input type="text" id="problem-search" placeholder="Search problems or concepts..."
+                           class="w-full px-3.5 py-2 bg-neutral-900 border border-neutral-700/80 text-sm text-neutral-100 placeholder-neutral-500 rounded-xl focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition duration-150" />
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <!-- Difficulty Filter Pills -->
+                    <div class="inline-flex p-1 bg-neutral-900 border border-neutral-700/80 rounded-xl text-xs font-medium" id="difficulty-filters">
+                        <button type="button" data-diff="all" class="diff-btn px-3 py-1 rounded-lg bg-neutral-700 text-white font-medium shadow-sm transition">All</button>
+                        <button type="button" data-diff="easy" class="diff-btn px-3 py-1 rounded-lg text-neutral-400 hover:text-white transition">Easy</button>
+                        <button type="button" data-diff="medium" class="diff-btn px-3 py-1 rounded-lg text-neutral-400 hover:text-white transition">Medium</button>
+                        <button type="button" data-diff="hard" class="diff-btn px-3 py-1 rounded-lg text-neutral-400 hover:text-white transition">Hard</button>
+                    </div>
+
+                    <!-- Hide Completed Toggle -->
+                    {{ if and .User (ge (len .User.Username) 1) }}
+                    <label class="inline-flex items-center gap-2 cursor-pointer bg-neutral-900 border border-neutral-700/80 px-3 py-1.5 rounded-xl text-xs text-neutral-300 hover:text-white transition select-none">
+                        <input type="checkbox" id="hide-completed-toggle" class="rounded bg-neutral-800 border-neutral-600 text-neutral-400 focus:ring-0 focus:ring-offset-0 cursor-pointer" />
+                        <span>Hide Solved</span>
+                    </label>
+                    {{ end }}
+                </div>
+            </div>
+
+            <!-- Empty Search State (No icons) -->
+            <div id="no-problems-state" class="hidden text-center py-12 bg-neutral-900/50 border border-dashed border-neutral-700/80 rounded-2xl">
+                <p class="text-neutral-300 text-base font-semibold">No matching problems found</p>
+                <p class="text-neutral-500 text-xs mt-1">Try clearing your search query or switching difficulty filters.</p>
+            </div>
+
+            <!-- Grouped Category Sections: Linear Problem Rows -->
+            <div id="categories-grid" class="flex flex-col gap-8">
+                {{ range $catIndex, $category := .Categories }}
+                <div class="category-card flex flex-col gap-2.5" data-category="{{ $category.Name }}">
+                    <!-- Category Header -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-baseline gap-3">
+                            <h2 class="text-base sm:text-lg font-semibold text-white tracking-tight">{{ $category.Name }}</h2>
+                            <span class="text-xs text-neutral-400 hidden sm:inline">{{ $category.Description }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            {{ if and $.User (ge (len $.User.Username) 1) }}
+                                <span class="text-xs text-neutral-400">
+                                    {{ $category.CompletedCount }}/{{ $category.TotalCount }}
+                                </span>
+                            {{ end }}
+                            <span class="text-xs px-2.5 py-0.5 rounded-md bg-neutral-900 border border-neutral-700/80 text-neutral-400 font-mono">
+                                {{ $category.TotalCount }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Linear Table Rows Container -->
+                    <div class="task-items-container flex flex-col bg-neutral-900 border border-neutral-700/80 rounded-xl overflow-hidden shadow-sm">
+                        {{ range $taskIndex, $taskData := $category.Tasks }}
+                            {{ template "task" dict "Index" $taskIndex "TaskData" $taskData }}
+                        {{ end }}
+                    </div>
+                </div>
                 {{ end }}
-            </ul>
+            </div>
         </section>
+
+        <!-- Instant Client-Side Live Filter Script -->
+        <script>
+            (function initProblemFilters() {
+                const searchInput = document.getElementById("problem-search");
+                const diffButtons = document.querySelectorAll("#difficulty-filters .diff-btn");
+                const hideCompletedToggle = document.getElementById("hide-completed-toggle");
+                const noProblemsState = document.getElementById("no-problems-state");
+                const categoryCards = document.querySelectorAll(".category-card");
+
+                let currentDiff = "all";
+                let searchTerm = "";
+                let hideCompleted = false;
+
+                function applyFilters() {
+                    let totalVisible = 0;
+
+                    categoryCards.forEach(card => {
+                        const taskItems = card.querySelectorAll(".task-item");
+                        let visibleInCat = 0;
+
+                        taskItems.forEach(item => {
+                            const title = (item.dataset.title || "").toLowerCase();
+                            const category = (item.dataset.category || "").toLowerCase();
+                            const difficulty = (item.dataset.difficulty || "").toLowerCase();
+                            const progress = (item.dataset.progress || "").toLowerCase();
+
+                            const matchesSearch = !searchTerm ||
+                                title.includes(searchTerm) ||
+                                category.includes(searchTerm);
+
+                            const matchesDiff = currentDiff === "all" || difficulty === currentDiff;
+
+                            const matchesCompleted = !hideCompleted || progress !== "completed";
+
+                            if (matchesSearch && matchesDiff && matchesCompleted) {
+                                item.classList.remove("hidden");
+                                visibleInCat++;
+                            } else {
+                                item.classList.add("hidden");
+                            }
+                        });
+
+                        if (visibleInCat > 0) {
+                            card.classList.remove("hidden");
+                            totalVisible += visibleInCat;
+                        } else {
+                            card.classList.add("hidden");
+                        }
+                    });
+
+                    if (noProblemsState) {
+                        if (totalVisible === 0) {
+                            noProblemsState.classList.remove("hidden");
+                        } else {
+                            noProblemsState.classList.add("hidden");
+                        }
+                    }
+                }
+
+                if (searchInput) {
+                    searchInput.addEventListener("input", (e) => {
+                        searchTerm = e.target.value.toLowerCase().trim();
+                        applyFilters();
+                    });
+                }
+
+                diffButtons.forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        diffButtons.forEach(b => {
+                            b.classList.remove("bg-neutral-700", "text-white", "font-medium", "shadow-sm");
+                            b.classList.add("text-neutral-400");
+                        });
+                        btn.classList.add("bg-neutral-700", "text-white", "font-medium", "shadow-sm");
+                        btn.classList.remove("text-neutral-400");
+
+                        currentDiff = btn.dataset.diff;
+                        applyFilters();
+                    });
+                });
+
+                if (hideCompletedToggle) {
+                    hideCompletedToggle.addEventListener("change", (e) => {
+                        hideCompleted = e.target.checked;
+                        applyFilters();
+                    });
+                }
+            })();
+        </script>
     </main>
 {{ end }}

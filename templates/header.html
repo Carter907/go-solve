@@ -1,36 +1,29 @@
 {{ define "header" }}
-    <header id="header" class="dark:text-white flex flex-row bg-neutral-900 p-10">
-        <div class="text-4xl basis-1/4">
-            <a href="/">Go-solve</a>
-            <p class="opacity-50 text-base">Solve Golang problems of all difficulties!</p>
-        </div>
-        <div class="flex-grow flex flex-row gap-10">
-            <div class="basis-4/5 text-end self-center opacity-50">
-                <p><span class="underline">Logged in as:</span>
+    <header id="header" class="sticky top-0 z-50 w-full border-b border-neutral-700/80 bg-neutral-900/95 backdrop-blur">
+        <div class="w-11/12 max-w-5xl mx-auto h-16 flex items-center justify-between">
+            <!-- Brand Logo (Pure text, no icon) -->
+            <a href="/" class="text-xl font-bold tracking-tight text-white hover:text-neutral-300 transition">
+                Go-Solve
+            </a>
+
+            <!-- Right: User info & Auth controls (no icons) -->
+            <div class="flex items-center gap-3 text-sm">
                 {{ if .User }}
                     {{ with .User }}
                         {{ if ge (len .Username) 1 }}
-                             {{ .Username }}</p>
-                        {{ end }}
-                    {{ end }}
-                {{ end }}
-
-            </div>
-            <div class="flex-grow flex flex-col self-center">
-                <!-- Dropdown Button -->
-                <div>
-                    {{ if .User }}
-                        {{ with .User }}
-                            {{ if ge (len .Username) 1 }}
+                            <div class="flex items-center gap-3">
+                                <span class="hidden sm:inline-block text-xs text-neutral-400 bg-neutral-800 border border-neutral-700 px-3 py-1 rounded-full">
+                                    {{ .Username }}
+                                </span>
                                 {{ template "logout-button" . }}
-                            {{ else }}
-
-                                {{ template "login-button" . }}
-                            {{ end }}
+                            </div>
+                        {{ else }}
+                            {{ template "login-button" . }}
                         {{ end }}
                     {{ end }}
-
-                </div>
+                {{ else }}
+                    {{ template "login-button" . }}
+                {{ end }}
             </div>
         </div>
     </header>

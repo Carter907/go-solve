@@ -10,17 +10,29 @@
 
         <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.2/ace.js"></script>
+        <!-- Local self-hosted Ace Editor -->
+        <script src="/static/ace/ace.js"></script>
+        <script src="/static/ace/mode-golang.js"></script>
+        <script src="/static/ace/theme-gruvbox.js"></script>
+        <script>
+            if (window.ace) {
+                ace.config.set("basePath", "/static/ace/");
+                ace.config.set("modePath", "/static/ace/");
+                ace.config.set("themePath", "/static/ace/");
+            }
+        </script>
         <script src="https://unpkg.com/htmx.org@2.0.0"></script>
     </head>
-    <body class="dark bg-neutral-800 h-screen flex flex-col text-neutral-200">
+    <body class="dark bg-neutral-800 min-h-screen flex flex-col text-neutral-200 antialiased">
 
     {{ template "header" . }}
 
     {{ if eq .Path "signup-form"}}
         {{ template "signup-form" }}
+    {{ else if eq .Path "editor" }}
+        {{ template "editor" .EditorData }}
     {{ else if eq .Path "" }}
-        {{ template "task-list" .TaskData }}
+        {{ template "task-list" . }}
     {{ end }}
 
     </body>
