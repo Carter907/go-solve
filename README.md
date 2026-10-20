@@ -115,7 +115,7 @@ Consult [`ISSUES.md`](ISSUES.md) for the active backlog and priority matrix.
 - [x] **Phase 2: Concurrency & Sessions** (Cookie session management, eliminated global shared user state, task ID routing, starter code immutability).
 - [x] **Phase 4 (Partial): Template Registry & View Models** (Pre-parsed templates, decoupled view models, layout composition).
 - [ ] **Phase 3: Secure Runner Sandboxing** (Containerized execution with dropped capabilities / gVisor / nsjail to prevent arbitrary host RCE).
-- [ ] **Phase 4: Routing & Performance Polish** (Go 1.22+ mux routing patterns, Fly.io persistent volumes).
+- [ ] **Phase 4: Routing & Performance Polish** (Go 1.22+ mux routing patterns, Render persistent disk, non-root Docker execution).
 
 ---
 

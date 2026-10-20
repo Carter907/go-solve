@@ -2,29 +2,38 @@
 
 FROM golang:1.24
 
-# Set destination for COPY
 WORKDIR /app
 
 # Download Go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code. Note the slash at the end, as explained in
-# https://docs.docker.com/reference/dockerfile/#copy
+# Create unprivileged system user and group (UID/GID 10001)
+RUN groupadd --system --gid 10001 appgroup && \
+    useradd --system --uid 10001 --gid appgroup --create-home --home-dir /home/appuser appuser
+
+# Set up runtime directories with non-root ownership
+RUN mkdir -p /data /app/data /home/appuser/.cache/go-build /home/appuser/go && \
+    chown -R appuser:appgroup /data /app/data /home/appuser
+
+# Copy source code and build binary
 COPY . ./
+RUN GOOS=linux go build -o /docker-go-solve && \
+    chmod 755 /docker-go-solve
 
-# Build
-RUN GOOS=linux go build -o /docker-go-solve
+# Switch to unprivileged appuser for runtime execution
+USER appuser
+ENV HOME=/home/appuser \
+    GOPATH=/home/appuser/go \
+    GOCACHE=/home/appuser/.cache/go-build \
+    DATABASE_PATH=/data/go-solve.db
 
-# Pre-warm Go test runner cache so runtime executions are fast
+# Pre-warm Go test cache as appuser so runtime code evaluations are fast
 RUN GOTOOLCHAIN=local GOPROXY=off CGO_ENABLED=0 go test -vet=off ./tasks/easy/hello_world ./tasks/easy/bubbles
 
-# Optional:
-# To bind to a TCP port, runtime parameters must be supplied to the docker command.
-# But we can document in the Dockerfile what ports
-# the application is going to listen on by default.
-# https://docs.docker.com/reference/dockerfile/#expose
 EXPOSE 8080
 
-# Run
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/healthz || exit 1
+
 CMD ["/docker-go-solve"]

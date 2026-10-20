@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: go-solve
+    env: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_PATH
+        value: /data/go-solve.db
+    disk:
+      name: gosolve-data
+      mountPath: /data
+      sizeGB: 1

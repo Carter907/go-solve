@@ -17,7 +17,7 @@ Welcome to **`go-solve`**! This document serves as the single source of truth fo
 - **Code Editor:** [Ace Editor](https://ace.c9.io/) with Go syntax highlighting
 - **ORM & Database:** [GORM](https://gorm.io/) with SQLite driver (`github.com/mattn/go-sqlite3`)
 - **Password Security:** `golang.org/x/crypto/bcrypt` (cost 14)
-- **Deployment:** Docker & [Fly.io](https://fly.io)
+- **Deployment:** Docker & [Render](https://render.com)
 
 ### Architectural Flow
 ```mermaid
@@ -76,7 +76,7 @@ flowchart LR
 │       └── hello_world/     # Hello World task
 ├── templates/               # Server-rendered HTML templates
 ├── Dockerfile               # Production Docker container configuration
-├── fly.toml                 # Fly.io deployment manifest
+├── render.yaml              # Render blueprint deployment manifest
 ├── go.mod / go.sum          # Go dependencies
 ├── ISSUES.md                # Comprehensive issue catalog and revival roadmap
 └── main.go                  # Application entrypoint & HTTP server bootstrap
@@ -220,4 +220,5 @@ Consult [`ISSUES.md`](file:///home/speer/Code/golang/go-solve/ISSUES.md) for the
 - [x] **Phase 1: Stabilization & Fix CI** (Repaired test suite, reference solutions, runner timeout, AutoMigrate & seeder, untracked `data/db`).
 - [x] **Phase 2: Concurrency & Sessions** (Cookie session management, eliminated global `user` and `currTaskIndex`, task ID routing, starter code immutability).
 - [ ] **Phase 3: Secure Runner Sandboxing** (Containerized execution with dropped capabilities / gVisor / nsjail to prevent arbitrary host RCE).
-- [ ] **Phase 4: Routing & Performance Polish** (Go 1.22+ mux routing, template pre-parsing registry, Fly.io volume mounts).
+- [ ] **Phase 4: Routing, Deployment & Polish** (Go 1.22+ mux routing [done], template pre-parsing registry [done], Render persistent disk [done], non-root Docker [done], asset vendoring).
+- [ ] **Phase 5: Learner Experience & Content Expansion** (User solution draft auto-saving, structured test case results table, concurrency/channel challenges).

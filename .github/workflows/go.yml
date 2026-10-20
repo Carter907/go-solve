@@ -26,3 +26,20 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t go-solve:ci .
+
+    - name: Verify Non-Root User Execution
+      run: |
+        USER_ID=$(docker run --rm go-solve:ci id -u)
+        if [ "$USER_ID" -ne 10001 ]; then
+          echo "Expected UID 10001, got $USER_ID"
+          exit 1
+        fi
+        echo "Non-root execution verified: UID=$USER_ID"
